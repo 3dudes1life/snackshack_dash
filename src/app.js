@@ -187,29 +187,87 @@ function estimatedProfit(r){return estimatedRevenue(r)-batchCostForRecipe(r)}
 function flags(p){return p?(p.recipe||[]).filter(l=>number(l.amount)<=0||number(l.ingredientCost)<=0).length:0}
 function activeRecipe(){const all=mergedRecipes();return all.find(r=>r.key===selectedRecipeKey)||all[0];}
 
-function scaleAmountText(text,batches){
-  const value=number(text);
-  if(!value) return text;
-  const scaled=value*batches;
-  if(Math.abs(scaled-Math.round(scaled))<.001) return String(Math.round(scaled));
-  return scaled.toFixed(2).replace(/\.?0+$/,"");
+function parseFractionValue(value){
+  const text=String(value||"").trim();
+  if(!text) return null;
+
+  // Handles: 1 1/2, 2 and 3/4, 1/2, .5, 2.25
+  const mixed=text.match(/^(\d+)\s+(?:and\s+)?(\d+)\/(\d+)$/i);
+  if(mixed) return number(mixed[1]) + number(mixed[2]) / number(mixed[3]);
+
+  const fraction=text.match(/^(\d+)\/(\d+)$/);
+  if(fraction) return number(fraction[1]) / number(fraction[2]);
+
+  const decimal=text.match(/^\d+(?:\.\d+)?$/);
+  if(decimal) return number(text);
+
+  return null;
+}
+function formatScaledAmount(value){
+  const n=number(value);
+  if(!isFinite(n) || n===0) return "";
+
+  // Keep common baking fractions pretty.
+  const whole=Math.floor(n);
+  const frac=n-whole;
+  const common=[
+    [0.125,"1/8"],[0.1667,"1/6"],[0.25,"1/4"],[0.3333,"1/3"],
+    [0.375,"3/8"],[0.5,"1/2"],[0.625,"5/8"],[0.6667,"2/3"],
+    [0.75,"3/4"],[0.875,"7/8"]
+  ];
+  const hit=common.find(([v])=>Math.abs(frac-v)<0.035);
+  if(hit){
+    if(whole===0) return hit[1];
+    return `${whole} ${hit[1]}`;
+  }
+
+  if(Math.abs(n-Math.round(n))<0.001) return String(Math.round(n));
+  return n.toFixed(2).replace(/\.?0+$/,"");
 }
 function scaledIngredientText(raw,batches){
-  const text=String(raw||"");
-  return text.replace(/^(\s*)(\d+(?:\.\d+)?)(\s+)/,(_,pre,num,space)=>pre+scaleAmountText(num,batches)+space);
+  let text=String(raw||"").trim();
+  if(!text) return text;
+
+  // Preserve optional/non-numeric lines.
+  if(/^(green food coloring|flaky|handwritten|no almond|as needed|optional)/i.test(text)) return text;
+
+  // Handles leading amounts:
+  // "1 1/2 cups flour", "2 and 3/4 cups flour", "1/2 tsp salt", "2 eggs"
+  const lead=text.match(/^(\s*)((?:\d+\s+(?:and\s+)?\d+\/\d+)|(?:\d+\/\d+)|(?:\d+(?:\.\d+)?))(\s+)(.*)$/i);
+  if(lead){
+    const parsed=parseFractionValue(lead[2]);
+    if(parsed!==null){
+      return `${lead[1]}${formatScaledAmount(parsed*batches)}${lead[3]}${lead[4]}`;
+    }
+  }
+
+  // Handles "1 cup + 2 tbsp flour" by scaling both number-unit pairs.
+  text=text.replace(/(\d+\s+(?:and\s+)?\d+\/\d+|\d+\/\d+|\d+(?:\.\d+)?)(\s*(?:cups?|tbsp|tablespoons?|tsp|teaspoons?|oz|ounces?|eggs?|egg yolks?|yolks?|bags?|bag|jars?|jar|boxes?|box)\b)/gi,
+    (match, amount, unit)=>{
+      const parsed=parseFractionValue(amount);
+      return parsed===null ? match : `${formatScaledAmount(parsed*batches)}${unit}`;
+    }
+  );
+
+  return text;
 }
 function pRecipeLinesForScaledIngredients(r){
   const p=r.costProduct;
-  if(!p || !(p.recipe||[]).length){
-    return (r.ingredients||[]).map(item=>scaledIngredientText(item,selectedBatches(r)));
+  const batches=selectedBatches(r);
+
+  // Best source: Google Sheet recipe lines because those are already numeric.
+  if(p && (p.recipe||[]).length){
+    const sheetBatch=sheetBatches(p);
+    const multiplier=batches/sheetBatch;
+    return (p.recipe||[]).map(line=>{
+      const amt=number(line.amount)*multiplier;
+      const pretty=amt ? formatScaledAmount(amt) : "";
+      return `${pretty} ${line.unit||""} ${line.ingredient}`.trim();
+    });
   }
-  const sheetBatch=sheetBatches(p);
-  const multiplier=selectedBatches(r)/sheetBatch;
-  return (p.recipe||[]).map(line=>{
-    const amt=(number(line.amount)*multiplier);
-    const pretty=amt?amt.toFixed(2).replace(/\.?0+$/,""):"";
-    return `${pretty} ${line.unit||""} ${line.ingredient}`.trim();
-  });
+
+  // Fallback source: photo/baked recipe text with fraction scaling.
+  return (r.ingredients||[]).map(item=>scaledIngredientText(item,batches));
 }
 
 function batchControlHtml(r, compact=false){
@@ -307,7 +365,7 @@ function renderRecipeDetail(){
       <div>
         <p class="eyebrow">${Math.round(productionYield(r))} ${unitLabel(r)}</p>
         <h3>${r.name}</h3>
-        <p class="muted">Kitchen mode: no accounting, just scaled ingredients and steps.</p>
+        <p class="muted">Kitchen mode: ingredients below are scaled to the batch count. Steps stay clean.</p>
       </div>
       <div class="detail-side kitchen-side">
         ${batchControlHtml(r)}

@@ -121,3 +121,18 @@ This version separates the two workflows:
 - Builds smart prep/shopping list.
 - Summarizes production cost, revenue, and profit.
 - Keeps cleanup recommendations separate from kitchen instructions.
+
+
+## v19 Scaled Recipes
+
+Cook Mode now scales ingredient amounts when Caleb changes the batch count.
+
+Improved scaler handles:
+- Google Sheet numeric recipe rows
+- photo/baked recipe text fallback
+- fractions like `1/2`, `2/3`, `3/4`
+- mixed numbers like `1 1/2`
+- phrases like `2 and 3/4`
+- multiple amounts in one line like `1 cup + 2 tbsp`
+
+Costs stay in Production Costs. Cook Mode stays focused on baking.
