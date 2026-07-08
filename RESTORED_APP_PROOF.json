@@ -1,0 +1,19 @@
+{
+  "version": "v60-restored-app",
+  "critical_fix": "Completely replaced corrupted src/app.js with a clean rebuilt app.",
+  "why": "GitHub app.js was corrupted by text replacement, causing Loading state forever.",
+  "features": [
+    "styled layout preserved",
+    "valid JavaScript syntax checked",
+    "Square + Google Sheets JSONP live load",
+    "auto-refresh every 60 seconds",
+    "refresh on focus",
+    "Order Hub",
+    "Invoice Hub",
+    "Production Demand",
+    "Send Demand to Production Planner",
+    "Brain 8.0 ERP profit health",
+    "real uploaded logo",
+    "normal favicon files"
+  ]
+}

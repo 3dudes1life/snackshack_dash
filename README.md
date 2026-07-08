@@ -379,3 +379,20 @@ Included:
 - ERP cards for profit health, production queue, and Square name cleanup.
 - Real uploaded logo remains.
 - Normal favicon files only, no embedded base64 favicon.
+
+
+## v60 Restored App
+
+This build completely replaces the corrupted `src/app.js`.
+
+The live GitHub app was stuck on loading because app.js had invalid JavaScript from a bad text replacement. This ZIP restores a clean rebuilt app while preserving the styled dashboard layout.
+
+Includes:
+- Clean app.js with syntax check.
+- Brain 8.0.
+- Square Order + Invoice Hub.
+- Production Demand.
+- Send Demand to Production Planner.
+- Live sync on load, focus, refresh, and every 60 seconds.
+- Real uploaded logo.
+- Normal favicon files.
