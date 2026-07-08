@@ -136,3 +136,22 @@ Improved scaler handles:
 - multiple amounts in one line like `1 cup + 2 tbsp`
 
 Costs stay in Production Costs. Cook Mode stays focused on baking.
+
+
+## v20 Production Planner Final
+
+Fixes:
+- Batch count can now be 0.
+- Default production batch count is 0 so Caleb only adds what he is actually making.
+- Batch 0 recipes do not contribute to production cost, projected yield, or Smart Prep ingredients.
+- Added planner buttons:
+  - Set all batches to 0
+  - Set costed recipes to 1
+- Improved Google Sheet recipe matching for:
+  - Red Velvet
+  - Nanny Pound Cake
+  - Chocolate Chip
+  - Rice Krispie Treats
+  - Blackberry Jam
+  - typo/abbreviation variants
+- Added ingredient-signature fallback matching when names are messy.

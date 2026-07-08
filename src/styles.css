@@ -540,3 +540,52 @@ details p span{text-align:right;color:var(--muted)}
 .batch-control input {
   font-size: 1rem;
 }
+
+
+/* v20 production planner final */
+.planner-actions {
+  grid-column: 1 / -1;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:18px;
+  padding:10px;
+  box-shadow:var(--soft);
+}
+.planner-actions button {
+  border:0;
+  border-radius:999px;
+  padding:9px 12px;
+  font:inherit;
+  font-size:.82rem;
+  font-weight:900;
+  cursor:pointer;
+  background:var(--teal);
+  color:#fff;
+}
+.planner-actions button:first-child {
+  background:var(--coral);
+}
+.planner-actions span {
+  color:var(--muted);
+  font-size:.82rem;
+  font-weight:800;
+}
+.batch-control input {
+  min-width: 0;
+}
+.cost-card.needs-cleanup {
+  background:#fff8ea;
+}
+.cost-card.needs-cleanup .cost-top strong {
+  color:#6b3b1d;
+}
+.recipe-row small {
+  line-height:1.25;
+}
+@media(max-width:520px){
+  .planner-actions{display:grid}
+}

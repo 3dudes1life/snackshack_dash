@@ -23,22 +23,23 @@ function tokenScore(a,b){
   return shared/Math.max(aw.length,bw.length);
 }
 const MANUAL_MATCHES={
-  chocolatechipcookies:["chocolatechip","classicchocolatechip","chocolatechipcookies"],
-  brownbutterchocolatechip:["brownbutterchocolatechip","brownbutterchocchip","chewybrownbutterchocolatechip"],
-  doublechocolatechip:["doublechocolatechip","doublechocolatechipcookies"],
-  greenmintchocolatechip:["greenmintchocolatechip","greenmintchocoloatechip"],
-  whitechocolatemacadamianut:["whitechocolatemacadamianut","whitechocmacadamianut","whitechocolatemacadamianutcookies"],
-  oatmealraisin:["oatmealraisin","bakeryoatmealraisin"],
-  molasses:["molasses","gingermolasses","softgingermolasses"],
-  softsprinkle:["softsprinkle","sprinkle","softsprinklecookies","sugarsprinkle"],
-  pumpkinsnickerdoodle:["pumpkinsnickerdoodle"],
-  peanutbutter:["peanutbutter","softchewypeanutbutter"],
-  redvelvet:["redvelvet"],
-  thumbprint:["thumbprint","thumbprintcookies"],
-  nannypoundcake:["nannypoundcake","poundcake"],
-  blackberryjam:["blackberryjam","blackberry"],
-  ricekrispietreats:["ricekrispietreats","ricekrispie","ricekrispietreats9x12pan","ricekrispietreat"],
-  monster:["monster","monstercookies"]
+  chocolatechipcookies:["chocolatechip","classicchocolatechip","chocolatechipcookies","chocolatechipcookie"],
+  chocolatechip:["chocolatechip","chocolatechipcookies","classicchocolatechip"],
+  brownbutterchocolatechip:["brownbutterchocolatechip","brownbutterchocchip","brownbutterchocolatechipcookies","chewybrownbutterchocolatechip"],
+  doublechocolatechip:["doublechocolatechip","doublechocolatechipcookies","doublechocolate"],
+  greenmintchocolatechip:["greenmintchocolatechip","greenmintchocoloatechip","mintchocolatechip","greenmint"],
+  whitechocolatemacadamianut:["whitechocolatemacadamianut","whitechocmacadamianut","whitechocolatemacadamianut","whitechocolatemacadamianutcookies","macadamianut"],
+  oatmealraisin:["oatmealraisin","bakeryoatmealraisin","oatmealraisincookies"],
+  molasses:["molasses","gingermolasses","softgingermolasses","molassescookies"],
+  softsprinkle:["softsprinkle","sprinkle","softsprinklecookies","sugarsprinkle","sprinklecookies"],
+  pumpkinsnickerdoodle:["pumpkinsnickerdoodle","pumpkinsnickerdoodlecookies"],
+  peanutbutter:["peanutbutter","softchewypeanutbutter","peanutbuttercookies"],
+  redvelvet:["redvelvet","redvelvetcookies","redvelvetcookie"],
+  thumbprint:["thumbprint","thumbprintcookies","thumbprintcookie"],
+  nannypoundcake:["nannypoundcake","nannypoundcakecookies","poundcake","poundcakecookies","nannys"],
+  blackberryjam:["blackberryjam","blackberry","blackberryjelly"],
+  ricekrispietreats:["ricekrispietreats","ricekrispie","ricekrispies","ricekrispietreats9x12pan","ricekrispietreat"],
+  monster:["monster","monstercookies","monstercookie"]
 };
 function matchingKeysForRecipe(recipe){
   const names=[recipe.name,...(recipe.aliases||[])];
@@ -67,10 +68,10 @@ function savePriceState(){localStorage.setItem("cdawgPriceState",JSON.stringify(
 
 function getBatchOverride(key,fallback=1){
   const value=number(batchState[key]);
-  return value>0?value:number(fallback)||1;
+  return value>=0 && batchState.hasOwnProperty(key)?value:number(fallback)||0;
 }
 function setBatchOverride(key,value){
-  batchState[key]=Math.max(1,number(value));
+  batchState[key]=Math.max(0,number(value));
   saveBatchState();
 }
 function getSellPrice(r){
@@ -109,26 +110,78 @@ async function loadBackendData(){
 }
 
 function recipeKey(r){return norm(r.name)}
+
+function productMatchNames(product){
+  const names=[product.name, product.sku, product.title, product.productName, product.recipeName].filter(Boolean);
+  const extras=[];
+  names.forEach(name=>{
+    const key=smartKey(name);
+    extras.push(key, norm(name));
+    Object.entries(MANUAL_MATCHES).forEach(([canonical, aliases])=>{
+      if(aliases.includes(key) || key.includes(canonical) || canonical.includes(key)){
+        extras.push(canonical, ...aliases);
+      }
+    });
+  });
+  return [...new Set([...names, ...extras].filter(Boolean))];
+}
+
+function recipeMatchNames(recipe){
+  const names=[recipe.name, ...(recipe.aliases||[])].filter(Boolean);
+  const extras=[];
+  names.forEach(name=>{
+    const key=smartKey(name);
+    extras.push(key, norm(name));
+    if(MANUAL_MATCHES[key]) extras.push(...MANUAL_MATCHES[key]);
+    Object.entries(MANUAL_MATCHES).forEach(([canonical, aliases])=>{
+      if(aliases.includes(key) || key.includes(canonical) || canonical.includes(key)){
+        extras.push(canonical, ...aliases);
+      }
+    });
+  });
+  return [...new Set([...names, ...extras].filter(Boolean))];
+}
+
 function findCostProduct(r){
   const products=dashboardData.products||[];
-  const recipeKeys=matchingKeysForRecipe(r);
+  const recipeNames=recipeMatchNames(r);
+  const recipeKeys=recipeNames.map(smartKey).concat(recipeNames.map(norm)).filter(Boolean);
+
+  // 1. Exact/synonym/includes match.
   let found=products.find(p=>{
-    const productKeys=[smartKey(p.name), smartKey(p.sku), norm(p.name), norm(p.sku)].filter(Boolean);
-    return recipeKeys.some(rk=>productKeys.some(pk=>pk===rk || pk.includes(rk) || rk.includes(pk)));
+    const productNames=productMatchNames(p);
+    const productKeys=productNames.map(smartKey).concat(productNames.map(norm)).filter(Boolean);
+    return recipeKeys.some(rk=>productKeys.some(pk=>pk===rk || (rk.length>4 && pk.includes(rk)) || (pk.length>4 && rk.includes(pk))));
   });
   if(found) return found;
 
+  // 2. Token fuzzy matching.
   let best=null, bestScore=0;
   products.forEach(p=>{
-    [p.name,p.sku].filter(Boolean).forEach(pn=>{
-      [r.name,...(r.aliases||[])].forEach(rn=>{
+    productMatchNames(p).forEach(pn=>{
+      recipeNames.forEach(rn=>{
         const score=tokenScore(rn,pn);
         if(score>bestScore){bestScore=score;best=p;}
       });
     });
   });
-  return bestScore>=0.58 ? best : null;
+  if(bestScore>=0.42) return best;
+
+  // 3. Ingredient-signature fallback: compare recipe ingredient words to sheet product recipe words.
+  let signatureBest=null, signatureScore=0;
+  const recipeIngredientWords=new Set(
+    (r.ingredients||[]).flatMap(line=>titleWords(line)).filter(w=>w.length>2)
+  );
+  products.forEach(p=>{
+    const sheetWords=new Set((p.recipe||[]).flatMap(line=>titleWords(line.ingredient||"")).filter(w=>w.length>2));
+    if(!recipeIngredientWords.size || !sheetWords.size) return;
+    const shared=[...recipeIngredientWords].filter(w=>sheetWords.has(w)).length;
+    const score=shared/Math.max(recipeIngredientWords.size, sheetWords.size);
+    if(score>signatureScore){signatureScore=score;signatureBest=p;}
+  });
+  return signatureScore>=0.34 ? signatureBest : null;
 }
+
 function mergedRecipes(){
   const rows=bakedRecipes.map(r=>({...r,key:recipeKey(r),costProduct:findCostProduct(r)}));
   const existing=new Set(bakedRecipes.flatMap(r=>[r.name,...(r.aliases||[])]).map(norm));
@@ -154,7 +207,7 @@ function extractYieldNumber(yieldText){
 function sheetBatches(p){return p?number(p.batches)||1:1}
 function baseBatchCost(p){return p?(number(p.totalBatchCost)||(p.recipe||[]).reduce((s,l)=>s+number(l.ingredientCost),0)):0}
 function singleBatchCost(p){const sb=sheetBatches(p);return sb?baseBatchCost(p)/sb:baseBatchCost(p)}
-function selectedBatches(r){return getBatchOverride(r.key, sheetBatches(r.costProduct))}
+function selectedBatches(r){return getBatchOverride(r.key, 0)}
 function batchCostForRecipe(r){return singleBatchCost(r.costProduct)*selectedBatches(r)}
 function yieldPerSheetPlan(r){
   const p=r.costProduct;
@@ -274,7 +327,7 @@ function batchControlHtml(r, compact=false){
   const current=selectedBatches(r);
   return `<div class="batch-control ${compact?"compact":""}" data-key="${r.key}">
     <button type="button" data-action="minus" aria-label="Decrease batches">−</button>
-    <label><span>Batches</span><input type="number" min="1" step="1" value="${current}" data-action="input"></label>
+    <label><span>Make</span><input type="number" min="0" step="1" value="${current}" data-action="input"></label>
     <button type="button" data-action="plus" aria-label="Increase batches">+</button>
   </div>`;
 }
@@ -290,7 +343,7 @@ function bindControls(){
     control.querySelectorAll("button").forEach(btn=>{
       btn.addEventListener("click",()=>{
         const current=getBatchOverride(key,1);
-        setBatchOverride(key, btn.dataset.action==="plus"?current+1:Math.max(1,current-1));
+        setBatchOverride(key, btn.dataset.action==="plus"?current+1:Math.max(0,current-1));
         renderAll();
       });
     });
@@ -308,8 +361,20 @@ function renderStatus(live,msg){
   const all=mergedRecipes();
   if(!selectedRecipeKey && all[0]) selectedRecipeKey=all[0].key;
   document.getElementById("statusTitle").textContent=live?`${all.length} recipes ready for Caleb`:`${all.length} recipes loaded`;
-  document.getElementById("statusMessage").textContent=live?`${dashboardData.ingredients.length} ingredient costs connected. Cook Mode now scales ingredients only.`:(msg||"Built-in recipe cards are loaded.");
+  document.getElementById("statusMessage").textContent=live?`${dashboardData.ingredients.length} ingredient costs connected. Batch 0 means not making it today; ingredients scale live.`:(msg||"Built-in recipe cards are loaded.");
 }
+
+function setAllBatchesZero(){
+  mergedRecipes().forEach(r=>batchState[r.key]=0);
+  saveBatchState();
+  renderAll();
+}
+function setCostedBatchesOne(){
+  mergedRecipes().forEach(r=>batchState[r.key]=r.costProduct?1:0);
+  saveBatchState();
+  renderAll();
+}
+
 function renderOverview(){
   const all=mergedRecipes();
   const linked=all.filter(r=>r.costProduct).length;
@@ -391,32 +456,42 @@ function renderRecipeDetail(){
 }
 function renderCostCards(){
   const all=mergedRecipes();
-  document.getElementById("recipeCards").innerHTML=all.map(r=>{
-    const cost=batchCostForRecipe(r), revenue=estimatedRevenue(r), profit=estimatedProfit(r), y=productionYield(r);
-    return`
-      <article class="cost-card ${!r.costProduct||cost<=0?"needs-cleanup":""}">
-        <div class="cost-top">
-          <div>
-            <p class="eyebrow">${selectedBatches(r)} ${selectedBatches(r)===1?"batch":"batches"}</p>
-            <h3>${r.name}</h3>
-            <span>${Math.round(y)} ${unitLabel(r)} planned</span>
+  document.getElementById("recipeCards").innerHTML=`
+    <div class="planner-actions">
+      <button type="button" id="zeroAllBatches">Set all batches to 0</button>
+      <button type="button" id="oneCostedBatch">Set costed recipes to 1</button>
+      <span>Use 0 for cookies Caleb is not making today.</span>
+    </div>
+    ${all.map(r=>{
+      const cost=batchCostForRecipe(r), revenue=estimatedRevenue(r), profit=estimatedProfit(r), y=productionYield(r);
+      return`
+        <article class="cost-card ${!r.costProduct||cost<=0?"needs-cleanup":""}">
+          <div class="cost-top">
+            <div>
+              <p class="eyebrow">${selectedBatches(r)} ${selectedBatches(r)===1?"batch":"batches"}</p>
+              <h3>${r.name}</h3>
+              <span>${Math.round(y)} ${unitLabel(r)} planned</span>
+            </div>
+            <strong>${money(cost)}</strong>
           </div>
-          <strong>${money(cost)}</strong>
-        </div>
-        ${batchControlHtml(r,true)}
-        ${priceControlHtml(r)}
-        <div class="cost-stats business-stats">
-          <span><small>Revenue</small><b>${money(revenue)}</b></span>
-          <span><small>Profit</small><b>${money(profit)}</b></span>
-          <span><small>Margin</small><b>${revenue?Math.round((profit/revenue)*100):0}%</b></span>
-        </div>
-        <details>
-          <summary>${r.costProduct?"Ingredient cost breakdown":"No sheet match yet"}</summary>
-          ${r.costProduct?(r.costProduct.recipe||[]).map(l=>`<p><b>${l.ingredient}</b><span>${number(l.amount).toFixed(2)} ${l.unit||""} • ${money(l.ingredientCost)}</span></p>`).join(""):`<p><b>Recipe text loaded.</b><span>Add matching cost rows.</span></p>`}
-        </details>
-      </article>`;
-  }).join("");
+          ${batchControlHtml(r,true)}
+          ${priceControlHtml(r)}
+          <div class="cost-stats business-stats">
+            <span><small>Revenue</small><b>${money(revenue)}</b></span>
+            <span><small>Profit</small><b>${money(profit)}</b></span>
+            <span><small>Margin</small><b>${revenue?Math.round((profit/revenue)*100):0}%</b></span>
+          </div>
+          <details>
+            <summary>${r.costProduct?"Ingredient cost breakdown":"No sheet match yet"}</summary>
+            ${r.costProduct?(r.costProduct.recipe||[]).map(l=>`<p><b>${l.ingredient}</b><span>${number(l.amount).toFixed(2)} ${l.unit||""} • ${money(l.ingredientCost)}</span></p>`).join(""):`<p><b>Recipe text loaded.</b><span>Add matching cost rows.</span></p>`}
+          </details>
+        </article>`;
+    }).join("")}
+  `;
+  document.getElementById("zeroAllBatches")?.addEventListener("click",setAllBatchesZero);
+  document.getElementById("oneCostedBatch")?.addEventListener("click",setCostedBatchesOne);
 }
+
 function renderIngredients(){
   const ing=[...(dashboardData.ingredients||[])].sort((a,b)=>a.name.localeCompare(b.name));
   document.getElementById("ingredientGrid").innerHTML=ing.length?ing.map(i=>`
