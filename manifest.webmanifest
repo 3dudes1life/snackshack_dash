@@ -1,25 +1,31 @@
 {
   "name": "C-Dawg's Snack Shack Command Center",
   "short_name": "C-Dawg's",
-  "start_url": ".",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#f7f1df",
   "theme_color": "#f7f1df",
   "icons": [
     {
-      "src": "assets/favicon.png?v=30",
-      "sizes": "128x128",
+      "src": "./assets/favicon.png?v=32",
+      "sizes": "32x32",
       "type": "image/png"
     },
     {
-      "src": "assets/apple-touch-icon.png?v=30",
+      "src": "./assets/favicon-64.png?v=32",
+      "sizes": "64x64",
+      "type": "image/png"
+    },
+    {
+      "src": "./assets/icon-192.png?v=32",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "assets/cdawg-logo.png?v=30",
+      "src": "./assets/icon-512.png?v=32",
       "sizes": "512x512",
       "type": "image/png"
     }
-  ]
+  ],
+  "scope": "./"
 }

@@ -1,0 +1,20 @@
+{
+  "version": "v31-brain-7-full-info-favicon",
+  "visible_logo": "assets/cdawgs-snackshack-uploaded-logo.jpeg",
+  "favicons": [
+    "favicon.ico",
+    "favicon.png",
+    "assets/favicon.ico",
+    "assets/favicon.png",
+    "assets/favicon-64.png",
+    "assets/icon-192.png",
+    "assets/icon-512.png",
+    "icon.svg"
+  ],
+  "full_info_changes": [
+    "Caleb's Today List no longer slices bake-first demand to first 4 items",
+    "Prep Pull no longer slices ingredients to first 5 items",
+    "Open Docs card lists every open Square order/invoice",
+    "Order and demand lists scroll instead of hiding content"
+  ]
+}

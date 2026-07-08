@@ -1,0 +1,15 @@
+{
+  "version": "v32-embedded-favicon",
+  "primary_fix": "index.html uses a base64 data URI favicon so GitHub Pages path resolution cannot 404 it.",
+  "fallbacks": [
+    "favicon.ico",
+    "favicon.png",
+    "assets/favicon.ico",
+    "assets/favicon.png",
+    "assets/favicon-64.png",
+    "assets/icon-192.png",
+    "assets/icon-512.png",
+    "icon.svg"
+  ],
+  "visible_logo": "assets/cdawgs-snackshack-uploaded-logo.jpeg"
+}

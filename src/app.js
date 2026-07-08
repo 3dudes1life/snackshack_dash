@@ -907,7 +907,7 @@ function renderOrderHub(){
         <article class="demand-card ${row.unmatched?"unmatched":""}">
           <div>
             <b>${row.name}</b>
-            <span>${row.quantity} ordered across ${row.orderCount} order${row.orderCount===1?"":"s"}</span>
+            <span>${Number.isInteger(row.quantity)?row.quantity:row.quantity.toFixed(2)} ordered across ${row.orderCount} order${row.orderCount===1?"":"s"}</span>
           </div>
           <strong>${row.unmatched ? "Match needed" : `${row.batches} batch${row.batches===1?"":"es"}`}</strong>
           <small>${row.unmatched ? "Add alias or matching recipe/product name" : `Yield ${Math.round(row.yieldOne)} each batch · est cost ${money(row.recipeCost)}`}</small>
@@ -969,7 +969,7 @@ function buildPriorityItems(){
   if(matched.length){
     items.push({
       label:"Bake First",
-      title:matched.slice(0,4).map(row=>`${row.batches}× ${row.name}`).join(" · "),
+      title:matched.map(row=>`${row.batches}× ${row.name}`).join(" · "),
       detail:`Demand engine matched ${matched.length} recipe group${matched.length===1?"":"s"}.`,
       tone:"success"
     });
@@ -977,7 +977,7 @@ function buildPriorityItems(){
   if(unmatched.length){
     items.push({
       label:"Needs Match",
-      title:unmatched.slice(0,3).map(row=>row.name).join(" · "),
+      title:unmatched.map(row=>row.name).join(" · "),
       detail:"Add recipe aliases or align Square names so Brain can batch these.",
       tone:"warn"
     });
@@ -993,8 +993,22 @@ function buildPriorityItems(){
   if(ingredients.length){
     items.push({
       label:"Prep Pull",
-      title:ingredients.slice(0,5).map(i=>`${i.amount.toFixed(1).replace(/\.0$/,"")} ${i.unit} ${i.name}`).join(" · "),
+      title:ingredients.map(i=>`${i.amount.toFixed(1).replace(/\.0$/,"")} ${i.unit} ${i.name}`).join(" · "),
       detail:"Ingredient prep based on live Square demand only.",
+      tone:"calm"
+    });
+  }
+
+  const docs=combinedOpenSquareDocuments();
+  if(docs.length){
+    items.push({
+      label:"Open Docs",
+      title:docs.map(doc=>{
+        const total=doc.docType==="Invoice"?invoiceTotal(doc):orderTotal(doc);
+        const status=doc.docType==="Invoice"?invoiceStatus(doc):orderStatus(doc);
+        return `${doc.docType||"Order"} ${status} ${money(total)}`;
+      }).join(" · "),
+      detail:"Every open Square order/invoice included, not just the first few.",
       tone:"calm"
     });
   }
@@ -1102,7 +1116,7 @@ function buildBrain(){
     recs.push({
       type: topDemand.unmatched ? "warning" : "success",
       title:"Production demand",
-      text: topDemand.unmatched ? `${topDemand.name} needs a recipe match.` : `${matched.slice(0,4).map(r=>`${r.batches}× ${r.name}`).join(", ")}.`
+      text: topDemand.unmatched ? `${topDemand.name} needs a recipe match.` : `${matched.map(r=>`${r.batches}× ${r.name}`).join(", ")}.`
     });
     recs.push({
       type:"money",

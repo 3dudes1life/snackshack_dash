@@ -363,3 +363,40 @@ This ZIP uses the actual uploaded logo file:
 
 The old/generated generic logo and `icon.svg` fallback were removed.
 See `LOGO_PROOF.json`.
+
+
+## v31 Full Info + Favicon Fix
+
+Fixes:
+- Browser favicon now exists at every fallback path:
+  - `favicon.ico`
+  - `favicon.png`
+  - `assets/favicon.ico`
+  - `assets/favicon.png`
+  - `assets/favicon-64.png`
+  - `assets/icon-192.png`
+  - `assets/icon-512.png`
+  - `icon.svg`
+- All icons are generated from the uploaded C-Dawg logo.
+- Brain 7.0 no longer hides demand/prep info with short slices.
+- Caleb's Today List shows all bake-first demand.
+- Prep Pull shows all live Square demand ingredients.
+- Added Open Docs card showing every open Square order/invoice.
+- Order Hub lists scroll so content fits instead of disappearing.
+
+
+## v32 Embedded Favicon Fix
+
+This fixes the GitHub Pages favicon 404 issue by embedding the favicon directly in `index.html` as a base64 data URI.
+
+It also keeps normal fallback files:
+- `favicon.ico`
+- `favicon.png`
+- `assets/favicon.ico`
+- `assets/favicon.png`
+- `assets/favicon-64.png`
+- `assets/icon-192.png`
+- `assets/icon-512.png`
+- `icon.svg`
+
+If Safari still shows the old icon, clear Safari website data for `3dudes1life.github.io` or wait for Safari favicon cache to expire.
