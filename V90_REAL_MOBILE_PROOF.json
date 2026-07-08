@@ -1,0 +1,28 @@
+{
+  "version": "v90-real-mobile",
+  "github_check": "Live GitHub index was still v60-restored-app, so the last mobile ZIP was not the file currently being served.",
+  "visible_marker": "A small 'v90 mobile' pill appears bottom-right so deployment/cache can be confirmed.",
+  "files_added": [
+    "src/mobile.css"
+  ],
+  "mobile_fixes": [
+    "mobile CSS loaded as separate file after styles.css",
+    "mobile CSS also inlined at end of head",
+    "phone one-column layout",
+    "iPad two-column layout max",
+    "no page-level horizontal overflow",
+    "sticky app header",
+    "swipe nav that stays inside viewport",
+    "darker background contrast",
+    "larger tap targets",
+    "cards/panels cannot widen viewport"
+  ],
+  "brain_8_kept": [
+    "live Square + Google Sheets sync",
+    "Order + invoice hub",
+    "production demand",
+    "send demand to planner",
+    "Brain 8 profit/demand math",
+    "real C-Dawg logo"
+  ]
+}

@@ -396,3 +396,22 @@ Includes:
 - Live sync on load, focus, refresh, and every 60 seconds.
 - Real uploaded logo.
 - Normal favicon files.
+
+
+## v90 Real Mobile
+
+GitHub was still serving v60 restored app, not the mobile/app-mode build. This version makes the mobile layer obvious and impossible to miss.
+
+Adds:
+- `src/mobile.css` loaded after `src/styles.css`.
+- Same mobile CSS inlined at the end of `<head>`.
+- Visible tiny `v90 mobile` marker in the bottom-right to confirm the right build deployed.
+- Phone becomes one-column.
+- iPad becomes two-column max.
+- No page-level horizontal overflow.
+- Sticky app header.
+- Swipe nav inside the viewport.
+- Stronger/darker background contrast.
+- Larger tap targets.
+
+Brain 8.0 app logic is preserved.

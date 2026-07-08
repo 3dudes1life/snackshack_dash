@@ -2,13 +2,14 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"/>
 <title>C-Dawg's Snack Shack Command Center</title>
 <meta name="theme-color" content="#f7f1df"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="./src/styles.css?v=60-restored-app">
+<link rel="stylesheet" href="./src/styles.css?v=90-real-mobile">
+<link rel="stylesheet" href="./src/mobile.css?v=90-real-mobile">
 
 <style id="emergency-dashboard-css">
 :root{
@@ -1325,17 +1326,492 @@ body {
 }
 
 </style>
-  <link rel="icon" href="./favicon.ico?v=60">
-  <link rel="icon" type="image/png" href="./favicon.png?v=60" sizes="32x32">
-  <link rel="icon" type="image/png" href="./assets/favicon-64.png?v=60" sizes="64x64">
-  <link rel="apple-touch-icon" href="./assets/apple-touch-icon.png?v=60">
+  <link rel="icon" href="./favicon.ico?v=90">
+  <link rel="icon" type="image/png" href="./favicon.png?v=90" sizes="32x32">
+  <link rel="icon" type="image/png" href="./assets/favicon-64.png?v=90" sizes="64x64">
+  <link rel="apple-touch-icon" href="./assets/apple-touch-icon.png?v=90">
   <link rel="manifest" href="./manifest.webmanifest?v=60">
+<style id="v90-real-mobile-css">
+
+/* =========================================================
+   C-Dawg's Snack Shack — v90 REAL MOBILE APP LAYOUT
+   This file is loaded AFTER all legacy CSS.
+   Goal: no sideways page, app-like phone/iPad layout.
+   ========================================================= */
+
+:root {
+  --mobile-bg: #ded0ad;
+  --mobile-bg-dark: #cbbd9d;
+  --mobile-panel: rgba(255,253,247,.98);
+  --mobile-line: rgba(18,63,76,.20);
+  --mobile-shadow: 0 10px 24px rgba(48,44,34,.14);
+}
+
+/* universal overflow containment */
+html,
+body {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow-x: hidden !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  -webkit-text-size-adjust: 100% !important;
+}
+body {
+  background:
+    radial-gradient(circle at 8% 0%, rgba(255,232,190,.8), transparent 22rem),
+    linear-gradient(135deg, var(--mobile-bg), var(--mobile-bg-dark)) !important;
+}
+*, *::before, *::after {
+  box-sizing: border-box !important;
+}
+img, svg, video, canvas {
+  max-width: 100% !important;
+}
+button, input, select, textarea {
+  max-width: 100% !important;
+  font-size: 16px !important; /* avoids iOS zoom */
+}
+
+/* hard containment */
+.app-shell,
+.content,
+.sidebar,
+.panel,
+.hero-card,
+.recipe-workspace,
+.recipe-list,
+.recipe-detail,
+.detail-grid,
+.detail-side,
+.order-layout,
+.order-list,
+.demand-list,
+.two-panel,
+.list-stack,
+.brain-summary,
+.order-summary,
+.metrics-grid,
+.report-grid,
+.sync-grid,
+.cost-card-grid,
+.ingredient-grid,
+.pricing-grid,
+.shopping-grid,
+.brain-grid,
+.priority-grid,
+.cost-card,
+.metric-card,
+.order-card,
+.demand-card,
+.brain-card,
+.recipe-row,
+.ingredient-chip,
+.report-card,
+.shopping-grid article,
+.priority-grid article,
+.brain-summary article,
+.order-summary article,
+.sync-grid article {
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+/* Add visible deployment marker in case Safari cache lies */
+body::after {
+  content: "v90 mobile";
+  position: fixed;
+  right: 8px;
+  bottom: 8px;
+  z-index: 99999;
+  background: rgba(18,63,76,.80);
+  color: #fff;
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 900;
+  pointer-events: none;
+  opacity: .55;
+}
+
+/* DESKTOP remains contained */
+.app-shell {
+  width: min(calc(100vw - 24px), 1480px) !important;
+  max-width: calc(100vw - 24px) !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+/* IPAD/TABLET APP MODE */
+@media (max-width: 1180px) {
+  .app-shell {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 12px 36px !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .sidebar {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 999 !important;
+    width: calc(100% + 24px) !important;
+    max-width: calc(100% + 24px) !important;
+    margin: 0 -12px 14px !important;
+    border-radius: 0 0 24px 24px !important;
+    padding: max(10px, env(safe-area-inset-top)) 12px 12px !important;
+    display: grid !important;
+    grid-template-columns: minmax(0,1fr) auto !important;
+    gap: 10px !important;
+    align-items: center !important;
+    background: rgba(255,253,247,.97) !important;
+    border-left: 0 !important;
+    border-right: 0 !important;
+    box-shadow: var(--mobile-shadow) !important;
+    overflow: hidden !important;
+  }
+
+  .brand {
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 9px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    font-size: .98rem !important;
+  }
+
+  .brand-logo,
+  .brand img,
+  .sidebar .brand-logo,
+  .sidebar img.brand-logo {
+    width: 42px !important;
+    height: 42px !important;
+    min-width: 42px !important;
+    border-radius: 999px !important;
+    object-fit: cover !important;
+  }
+
+  .refresh-btn {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    min-height: 42px !important;
+    padding: 9px 14px !important;
+    font-size: .84rem !important;
+    white-space: nowrap !important;
+  }
+
+  .side-nav {
+    grid-column: 1 / -1 !important;
+    display: flex !important;
+    gap: 7px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    padding: 2px 0 5px !important;
+    scroll-snap-type: x proximity !important;
+  }
+  .side-nav::-webkit-scrollbar { display: none !important; }
+
+  .side-nav a {
+    flex: 0 0 auto !important;
+    white-space: nowrap !important;
+    min-height: 40px !important;
+    padding: 9px 12px !important;
+    font-size: .84rem !important;
+    scroll-snap-align: start !important;
+  }
+
+  .content {
+    width: 100% !important;
+    max-width: 100% !important;
+    display: grid !important;
+    gap: 14px !important;
+    overflow: hidden !important;
+  }
+
+  .hero-card,
+  .panel {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 14px !important;
+    border-radius: 20px !important;
+    overflow: hidden !important;
+    background: var(--mobile-panel) !important;
+    border-color: var(--mobile-line) !important;
+  }
+
+  .hero-card {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+  .hero-card h1 {
+    font-size: clamp(1.45rem, 5.2vw, 2.05rem) !important;
+    line-height: 1.04 !important;
+    max-width: 100% !important;
+  }
+  .hero-card p,
+  .muted {
+    font-size: .92rem !important;
+    line-height: 1.35 !important;
+    max-width: 100% !important;
+  }
+
+  .print-btn,
+  #brainButton,
+  .apply-demand-btn,
+  #priorityApplyDemand {
+    width: 100% !important;
+    min-height: 44px !important;
+    display: block !important;
+  }
+
+  /* iPad gets two columns max */
+  .brain-summary,
+  .order-summary,
+  .metrics-grid,
+  .report-grid,
+  .sync-grid,
+  .cost-card-grid,
+  .pricing-grid,
+  .shopping-grid,
+  .brain-grid,
+  .priority-grid,
+  .ingredient-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  .recipe-workspace,
+  .detail-grid,
+  .order-layout,
+  .two-panel {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .recipe-list,
+  .order-list,
+  .demand-list,
+  .list-stack {
+    max-height: 50vh !important;
+    overflow: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+
+  .recipe-detail,
+  .recipe-detail-head,
+  .panel-head,
+  .detail-side {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+    min-height: 0 !important;
+  }
+
+  .batch-control,
+  .dual-price-control,
+  .planner-actions {
+    width: 100% !important;
+  }
+
+  .dual-price-control {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .brain-summary article,
+  .order-summary article,
+  .sync-grid article,
+  .metric-card,
+  .report-card,
+  .cost-card,
+  .brain-card,
+  .priority-grid article,
+  .shopping-grid article,
+  .ingredient-chip {
+    overflow: hidden !important;
+    overflow-wrap: anywhere !important;
+  }
+}
+
+/* PHONE APP MODE */
+@media (max-width: 640px) {
+  .app-shell {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 8px 28px !important;
+  }
+
+  .sidebar {
+    width: calc(100% + 16px) !important;
+    max-width: calc(100% + 16px) !important;
+    margin-left: -8px !important;
+    margin-right: -8px !important;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+
+  .brand-logo,
+  .brand img,
+  .sidebar .brand-logo,
+  .sidebar img.brand-logo {
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+  }
+
+  .brand {
+    font-size: .9rem !important;
+  }
+
+  .side-nav a {
+    font-size: .78rem !important;
+    padding: 8px 10px !important;
+  }
+
+  .refresh-btn {
+    font-size: .78rem !important;
+    padding: 8px 11px !important;
+  }
+
+  .hero-card,
+  .panel {
+    padding: 12px !important;
+    border-radius: 18px !important;
+  }
+
+  .hero-card h1 {
+    font-size: clamp(1.35rem, 7.4vw, 1.85rem) !important;
+  }
+
+  .panel h2 {
+    font-size: 1.22rem !important;
+    line-height: 1.08 !important;
+  }
+
+  .recipe-detail h3 {
+    font-size: 1.35rem !important;
+  }
+
+  .eyebrow {
+    font-size: .62rem !important;
+    letter-spacing: .10em !important;
+  }
+
+  /* phone gets one clean column */
+  .brain-summary,
+  .order-summary,
+  .metrics-grid,
+  .report-grid,
+  .sync-grid,
+  .cost-card-grid,
+  .pricing-grid,
+  .shopping-grid,
+  .brain-grid,
+  .priority-grid,
+  .ingredient-grid {
+    grid-template-columns: 1fr !important;
+    gap: 9px !important;
+  }
+
+  .brain-summary article,
+  .order-summary article,
+  .sync-grid article,
+  .metric-card,
+  .report-card,
+  .cost-card,
+  .brain-card,
+  .priority-grid article,
+  .shopping-grid article,
+  .ingredient-chip {
+    padding: 11px !important;
+    border-radius: 16px !important;
+  }
+
+  .brain-summary article strong,
+  .order-summary article strong,
+  .sync-grid strong,
+  .metric-card strong {
+    font-size: 1.25rem !important;
+    line-height: 1.05 !important;
+  }
+
+  .cost-stats,
+  .business-stats,
+  .mini-margin-row,
+  .pricing-table,
+  .dual-price-control {
+    grid-template-columns: 1fr !important;
+  }
+
+  .order-card .order-card-top,
+  .cost-top,
+  .order-card li,
+  .list-row {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 6px !important;
+  }
+
+  .order-card li b,
+  .order-card .order-card-top strong,
+  .cost-top strong {
+    text-align: left !important;
+  }
+
+  .search-input {
+    width: 100% !important;
+  }
+
+  .recipe-row {
+    padding: 10px !important;
+  }
+}
+
+/* tiny phones */
+@media (max-width: 390px) {
+  .hero-card h1 { font-size: 1.28rem !important; }
+  .panel h2 { font-size: 1.15rem !important; }
+  .side-nav a { font-size: .74rem !important; }
+}
+
+/* Text cannot widen cards */
+.hero-card h1,
+.panel h2,
+.cost-card h3,
+.recipe-detail h3,
+.brain-card,
+.priority-grid article,
+.order-card,
+.demand-card,
+.ingredient-chip,
+.shopping-grid article,
+.metric-card,
+.report-card {
+  overflow-wrap: anywhere !important;
+  word-break: normal !important;
+}
+
+</style>
 </head>
 <body>
 <div class="app-shell">
   <aside class="sidebar">
     <a class="brand" href="#top">
-      <img class="brand-logo" src="./assets/cdawgs-snackshack-uploaded-logo.jpeg?v=60" alt="C-Dawg\'s Snack Shack logo">
+      <img class="brand-logo" src="./assets/cdawgs-snackshack-uploaded-logo.jpeg?v=90" alt="C-Dawg\'s Snack Shack logo">
       <span>C-Dawg's</span>
     </a>
     <nav class="side-nav">
@@ -1504,8 +1980,8 @@ body {
   </main>
 </div>
 
-<script src="data/recipe-library.js?v=60-restored-app"></script>
-<script src="data/config.js?v=60-restored-app"></script>
-<script src="src/app.js?v=60-restored-app"></script>
+<script src="data/recipe-library.js?v=90-real-mobile"></script>
+<script src="data/config.js?v=90-real-mobile"></script>
+<script src="src/app.js?v=90-real-mobile"></script>
 </body>
 </html>

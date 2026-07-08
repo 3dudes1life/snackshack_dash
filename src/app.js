@@ -855,3 +855,14 @@ async function init() {
 }
 init();
 window.addEventListener("focus", liveRefresh);
+
+
+/* v90 mobile marker */
+document.documentElement.classList.add("mobile-ready", "v90-mobile");
+function cdawgMobileViewportVars() {
+  document.documentElement.style.setProperty("--vh", `${window.innerHeight * 0.01}px`);
+  document.documentElement.style.setProperty("--vw", `${window.innerWidth * 0.01}px`);
+}
+cdawgMobileViewportVars();
+window.addEventListener("resize", cdawgMobileViewportVars);
+window.addEventListener("orientationchange", () => setTimeout(cdawgMobileViewportVars, 250));
