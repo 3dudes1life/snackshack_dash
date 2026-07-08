@@ -1904,3 +1904,80 @@ body::after {
     max-height: 46px !important;
   }
 }
+
+
+/* =========================================================
+   v92 FINAL MOBILE NAV + INVOICE COUNT FIX STYLES
+   Shows all mobile header options without left/right scrolling.
+   ========================================================= */
+@media (max-width: 1180px) {
+  .sidebar {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .side-nav {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+    padding: 2px 0 4px !important;
+    max-height: none !important;
+    scroll-snap-type: none !important;
+  }
+
+  .side-nav a {
+    min-width: 0 !important;
+    width: 100% !important;
+    flex: unset !important;
+    white-space: normal !important;
+    text-align: center !important;
+    line-height: 1.05 !important;
+    padding: 9px 7px !important;
+    font-size: .78rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .app-shell {
+    padding-top: calc(var(--mobile-header-height, 210px) + 12px) !important;
+  }
+
+  body::after {
+    content: "v92 final mobile" !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .side-nav {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+  }
+
+  .side-nav a {
+    min-height: 38px !important;
+    padding: 8px 6px !important;
+    font-size: .74rem !important;
+  }
+
+  .app-shell {
+    padding-top: calc(var(--mobile-header-height, 240px) + 12px) !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .side-nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .side-nav a {
+    font-size: .72rem !important;
+  }
+
+  .app-shell {
+    padding-top: calc(var(--mobile-header-height, 300px) + 12px) !important;
+  }
+}

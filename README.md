@@ -428,3 +428,17 @@ Fix:
 - Bottom-right deployment marker changes to `v91 fixed header`.
 
 Brain 8.0 logic is preserved.
+
+
+## v92 Final Mobile Nav + Invoice Fix
+
+Final polish pass.
+
+Fixes:
+- Mobile/iPad header nav wraps into a grid so every option is visible.
+- No left/right nav scrolling needed.
+- Fixed header spacing recalculates for the taller wrapped nav.
+- Square Order + matching Invoice are merged into one bakery order so the invoice does not double-count as a second order.
+- Merged item can display as `Order + Invoice`.
+
+Brain 8.0 logic is preserved.

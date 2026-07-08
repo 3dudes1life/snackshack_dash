@@ -1,0 +1,21 @@
+{
+  "version": "v92-final-mobile-nav-invoice",
+  "base": "/mnt/data/cdawgs-snackshack-commandcenter-brain-8-v91-fixed-mobile-header.zip",
+  "fixes": [
+    "Mobile nav no longer scrolls horizontally",
+    "iPad/mobile nav wraps into grid so all options are visible",
+    "Header spacing recalculates for the taller wrapped nav",
+    "Square Order + matching Invoice are deduped into one bakery order",
+    "Merged order displays as Order + Invoice with invoice status",
+    "Open Orders now counts unique bakery orders, not duplicate Square records"
+  ],
+  "kept": [
+    "v91 fixed mobile header",
+    "v90 real mobile app layout",
+    "Brain 8.0 logic",
+    "Square + Google Sheets live sync",
+    "Production Demand",
+    "Send Demand to Planner",
+    "real C-Dawg logo"
+  ]
+}

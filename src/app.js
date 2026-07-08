@@ -594,8 +594,82 @@ function invoiceItems(invoice) {
     catalogObjectId: item.catalogObjectId || ""
   }));
 }
+
+/* v92 Square invoice/order de-dupe */
+function squareDocIdentity(doc) {
+  return norm(
+    doc.orderId ||
+    doc.order_id ||
+    doc.orderID ||
+    doc.invoice?.order_id ||
+    doc.invoice?.orderId ||
+    doc.payment_requests?.[0]?.request_method ||
+    doc.id ||
+    doc.invoiceId ||
+    doc.invoice_id ||
+    doc.name ||
+    ""
+  );
+}
+
+function lineItemSignature(items) {
+  return (items || [])
+    .map(item => `${norm(item.name)}:${number(item.quantity)}`)
+    .sort()
+    .join("|");
+}
+
+function dedupeOpenSquareDocuments(docs) {
+  const groups = new Map();
+
+  docs.forEach(doc => {
+    const items = doc.docType === "Invoice" ? invoiceItems(doc) : orderItems(doc);
+    const signature = lineItemSignature(items);
+    const total = doc.docType === "Invoice" ? invoiceTotal(doc) : orderTotal(doc);
+    const id = squareDocIdentity(doc);
+    const key = id || signature || norm(`${doc.customer || doc.customerName || ""}-${total}-${doc.docType}`);
+
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push({...doc, __items: items, __signature: signature, __total: total});
+  });
+
+  const result = [];
+
+  groups.forEach(group => {
+    if (group.length === 1) {
+      result.push(group[0]);
+      return;
+    }
+
+    const orders = group.filter(doc => doc.docType === "Order");
+    const invoices = group.filter(doc => doc.docType === "Invoice");
+
+    if (orders.length && invoices.length) {
+      const order = orders.sort((a,b) => number(b.__total) - number(a.__total))[0];
+      const invoice = invoices.sort((a,b) => number(b.__total) - number(a.__total))[0];
+
+      result.push({
+        ...order,
+        docType: "Order + Invoice",
+        invoiceStatus: invoiceStatus(invoice),
+        invoiceId: invoice.id || invoice.invoiceId || invoice.invoice_id || "",
+        invoiceTotal: invoiceTotal(invoice),
+        invoiceRaw: invoice
+      });
+      return;
+    }
+
+    result.push(group.sort((a,b) => number(b.__total) - number(a.__total))[0]);
+  });
+
+  return result.map(({__items, __signature, __total, ...doc}) => doc);
+}
+
 function combinedOpenSquareDocuments() {
-  return [...openSquareOrders().map(o => ({...o, docType:"Order"})), ...openSquareInvoices().map(i => ({...i, docType:"Invoice"}))];
+  return dedupeOpenSquareDocuments([
+    ...openSquareOrders().map(o => ({...o, docType:"Order"})),
+    ...openSquareInvoices().map(i => ({...i, docType:"Invoice"}))
+  ]);
 }
 function formatDateShort(value) {
   if (!value) return "";
@@ -692,8 +766,8 @@ function renderOrderHub() {
   const orderSummary = document.getElementById("orderSummary");
   if (orderSummary) {
     orderSummary.innerHTML = [
-      ["Open Orders", summary.open.length, "Pending / active"],
-      ["Open Invoices", summary.openInvoices.length, "Unpaid / active"],
+      ["Open Orders", summary.combinedOpen.length, "Unique bakery orders"],
+      ["Open Invoices", summary.openInvoices.length, "Unpaid invoice records"],
       ["Open Value", money(summary.openRevenue + summary.openInvoiceRevenue), "Orders + invoices"],
       ["30-Day Orders", summary.orders.length, "Returned by backend"],
       ["Invoices", summary.invoices.length, "Returned by backend"],
@@ -710,7 +784,7 @@ function renderOrderHub() {
       const items = doc.docType === "Invoice" ? invoiceItems(doc) : orderItems(doc);
       const total = doc.docType === "Invoice" ? invoiceTotal(doc) : orderTotal(doc);
       const statusText = doc.docType === "Invoice" ? invoiceStatus(doc) : orderStatus(doc);
-      return `<article class="order-card"><div class="order-card-top"><div><b>${doc.customer || doc.customerName || "Square Customer"}</b><span>${formatDateShort(doc.docType === "Invoice" ? invoiceDate(doc) : orderDate(doc)) || "Date pending"}</span></div><strong>${money(total)}</strong></div><p><em>${doc.docType} · ${statusText}</em> <small>${doc.id || ""}</small></p><ul>${items.map(item => `<li><span>${item.quantity}× ${item.name}</span><b>${money(item.total)}</b></li>`).join("")}</ul></article>`;
+      return `<article class="order-card"><div class="order-card-top"><div><b>${doc.customer || doc.customerName || "Square Customer"}</b><span>${formatDateShort(doc.docType === "Invoice" ? invoiceDate(doc) : orderDate(doc)) || "Date pending"}</span></div><strong>${money(total)}</strong></div><p><em>${doc.docType} · ${statusText}${doc.invoiceStatus ? " · Invoice " + doc.invoiceStatus : ""}</em> <small>${doc.id || ""}</small></p><ul>${items.map(item => `<li><span>${item.quantity}× ${item.name}</span><b>${money(item.total)}</b></li>`).join("")}</ul></article>`;
     }).join("") : `<div class="empty-state">No pending/open Square orders or invoices right now.</div>`;
   }
   const demandRows = productionDemandBatches();
@@ -883,3 +957,9 @@ window.addEventListener("resize", cdawgUpdateMobileHeaderHeight);
 window.addEventListener("orientationchange", () => setTimeout(cdawgUpdateMobileHeaderHeight, 300));
 setTimeout(cdawgUpdateMobileHeaderHeight, 500);
 setTimeout(cdawgUpdateMobileHeaderHeight, 1500);
+
+
+/* v92 remeasure fixed header after nav wraps */
+setTimeout(cdawgUpdateMobileHeaderHeight, 250);
+setTimeout(cdawgUpdateMobileHeaderHeight, 1000);
+setTimeout(cdawgUpdateMobileHeaderHeight, 2500);
