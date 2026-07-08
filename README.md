@@ -26,3 +26,13 @@ Replace these files:
 - `manifest.webmanifest`
 
 Your current Apps Script can stay if it is already returning Google Sheet JSON.
+
+
+## v14 Batch Controls
+
+- Added + / − batch controls in Cook Mode.
+- Added + / − batch controls on every Recipe Cost card.
+- Batch counts are saved in the browser with localStorage.
+- Production cost recalculates instantly.
+- Overview totals update instantly.
+- Does not require Google Sheet edits.

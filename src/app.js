@@ -5,6 +5,23 @@ const norm=v=>String(v||"").toLowerCase().replace(/[^a-z0-9]+/g,"");
 let dashboardData={products:[],ingredients:[],orders:[],customers:[]};
 const bakedRecipes=window.CDAWG_RECIPE_LIBRARY||[];
 let selectedRecipeKey="";
+const batchState=loadBatchState();
+
+function loadBatchState(){
+  try{return JSON.parse(localStorage.getItem("cdawgBatchState")||"{}")}catch(e){return{}}
+}
+function saveBatchState(){
+  localStorage.setItem("cdawgBatchState",JSON.stringify(batchState));
+}
+function getBatchOverride(key,fallback=1){
+  const value=number(batchState[key]);
+  return value>0?value:number(fallback)||1;
+}
+function setBatchOverride(key,value){
+  batchState[key]=Math.max(0,number(value));
+  if(batchState[key]===0) batchState[key]=1;
+  saveBatchState();
+}
 
 function jsonp(url){
   return new Promise((resolve,reject)=>{
@@ -56,35 +73,85 @@ function mergedRecipes(){
   });
   return rows.sort((a,b)=>a.name.localeCompare(b.name));
 }
-function batchCost(p){return p?(number(p.totalBatchCost)||(p.recipe||[]).reduce((s,l)=>s+number(l.ingredientCost),0)):0}
-function perCookie(p){return p?(number(p.costPerCookie)||(number(p.batchYieldUnits)?batchCost(p)/number(p.batchYieldUnits):0)):0}
-function perDozen(p){return p?(number(p.costPerDozen)||perCookie(p)*12):0}
+function sheetBatches(p){return p?number(p.batches)||1:1}
+function baseBatchCost(p){
+  return p?(number(p.totalBatchCost)||(p.recipe||[]).reduce((s,l)=>s+number(l.ingredientCost),0)):0;
+}
+function singleBatchCost(p){
+  const sb=sheetBatches(p);
+  return sb?baseBatchCost(p)/sb:baseBatchCost(p);
+}
+function selectedBatches(recipeOrProduct){
+  const key=recipeOrProduct.key||norm(recipeOrProduct.name||recipeOrProduct.sku);
+  return getBatchOverride(key, sheetBatches(recipeOrProduct.costProduct||recipeOrProduct));
+}
+function batchCostForRecipe(r){
+  return singleBatchCost(r.costProduct)*selectedBatches(r);
+}
+function perCookieForRecipe(r){
+  const p=r.costProduct;
+  if(!p) return 0;
+  const sheetYield=number(p.batchYieldUnits)||extractYieldNumber(r.yield);
+  return sheetYield ? batchCostForRecipe(r)/sheetYield : 0;
+}
+function perDozenForRecipe(r){return perCookieForRecipe(r)*12}
+function extractYieldNumber(yieldText){
+  const found=String(yieldText||"").match(/[\d.]+/);
+  return found?number(found[0]):0;
+}
 function flags(p){return p?(p.recipe||[]).filter(l=>number(l.amount)<=0||number(l.ingredientCost)<=0).length:0}
-function priced(){return(dashboardData.products||[]).filter(p=>batchCost(p)>0||perCookie(p)>0)}
-function needs(){return(dashboardData.products||[]).filter(p=>batchCost(p)<=0&&perCookie(p)<=0)}
+function pricedRecipes(){return mergedRecipes().filter(r=>batchCostForRecipe(r)>0||perCookieForRecipe(r)>0)}
+function needs(){return mergedRecipes().filter(r=>!r.costProduct||batchCostForRecipe(r)<=0)}
 function activeRecipe(){
   const all=mergedRecipes();
   return all.find(r=>r.key===selectedRecipeKey)||all[0];
 }
 
+function batchControlHtml(r, compact=false){
+  const current=selectedBatches(r);
+  return `<div class="batch-control ${compact?"compact":""}" data-key="${r.key}">
+    <button type="button" data-action="minus" aria-label="Decrease batches">−</button>
+    <label><span>Batches</span><input type="number" min="1" step="1" value="${current}" data-action="input"></label>
+    <button type="button" data-action="plus" aria-label="Increase batches">+</button>
+  </div>`;
+}
+function bindBatchControls(){
+  document.querySelectorAll(".batch-control").forEach(control=>{
+    const key=control.dataset.key;
+    control.querySelectorAll("button").forEach(btn=>{
+      btn.addEventListener("click",()=>{
+        const current=getBatchOverride(key,1);
+        setBatchOverride(key, btn.dataset.action==="plus"?current+1:Math.max(1,current-1));
+        renderAll(false);
+      });
+    });
+    const input=control.querySelector("input");
+    input?.addEventListener("change",()=>{
+      setBatchOverride(key,input.value);
+      renderAll(false);
+    });
+  });
+}
 function renderStatus(live,msg){
   const all=mergedRecipes();
   if(!selectedRecipeKey && all[0]) selectedRecipeKey=all[0].key;
   document.getElementById("statusTitle").textContent=live?`${all.length} recipes ready for Caleb`:`${all.length} recipes loaded`;
-  document.getElementById("statusMessage").textContent=live?`${dashboardData.ingredients.length} ingredient costs connected from Google Sheets.`:(msg||"Built-in recipe cards are loaded.");
+  document.getElementById("statusMessage").textContent=live?`${dashboardData.ingredients.length} ingredient costs connected. Batch counts can be changed on-screen.`:(msg||"Built-in recipe cards are loaded.");
 }
 function renderOverview(){
   const all=mergedRecipes();
-  const p=priced();
+  const p=pricedRecipes();
   const n=needs();
-  const avg=p.length?p.reduce((s,x)=>s+perCookie(x),0)/p.length:0;
+  const avg=p.length?p.reduce((s,x)=>s+perCookieForRecipe(x),0)/p.length:0;
+  const totalProductionCost=all.reduce((s,r)=>s+batchCostForRecipe(r),0);
+  const totalBatches=all.reduce((s,r)=>s+selectedBatches(r),0);
   const cards=[
     ["Cook Cards",all.length,"Recipes ready"],
-    ["Costed Recipes",`${p.length}/${dashboardData.products.length||0}`,"Google Sheet matched"],
+    ["Production Batches",totalBatches,"Editable on-screen"],
+    ["Production Cost",money(totalProductionCost),"Using batch controls"],
     ["Ingredients",dashboardData.ingredients.length,"Cost library"],
     ["Avg Cost/Cookie",money(avg),"Across costed recipes"],
-    ["Needs Cleanup",n.length,"Zero-cost recipes"],
-    ["Next Step","Sell Prices","For profit/margin"]
+    ["Needs Cleanup",n.length,"Zero-cost recipes"]
   ];
   document.getElementById("overview").innerHTML=cards.map(([label,value,detail])=>`
     <article class="metric-card">
@@ -105,7 +172,7 @@ function renderRecipeList(filter=""){
       <button class="recipe-row ${r.key===selectedRecipeKey?"active":""}" data-key="${r.key}">
         <span>
           <b>${r.name}</b>
-          <small>${r.yield||"Yield TBD"}${p?` • ${money(batchCost(p))}`:""}</small>
+          <small>${r.yield||"Yield TBD"}${p?` • ${selectedBatches(r)} batch • ${money(batchCostForRecipe(r))}`:""}</small>
         </span>
         <em class="${p?"linked":"text"}">${p?"Cost":"Text"}</em>
       </button>`;
@@ -115,6 +182,7 @@ function renderRecipeList(filter=""){
       selectedRecipeKey=btn.dataset.key;
       renderRecipeList(document.getElementById("recipeSearch").value);
       renderRecipeDetail();
+      bindBatchControls();
     });
   });
 }
@@ -129,10 +197,13 @@ function renderRecipeDetail(){
         <h3>${r.name}</h3>
         <p class="muted">${r.source||""}</p>
       </div>
-      <div class="detail-cost">
-        <span>Batch</span>
-        <strong>${money(batchCost(p))}</strong>
-        <small>${money(perCookie(p))} each • ${money(perDozen(p))}/dozen</small>
+      <div class="detail-side">
+        ${batchControlHtml(r)}
+        <div class="detail-cost">
+          <span>Production Cost</span>
+          <strong>${money(batchCostForRecipe(r))}</strong>
+          <small>${money(perCookieForRecipe(r))} each • ${money(perDozenForRecipe(r))}/dozen</small>
+        </div>
       </div>
     </div>
     <div class="detail-grid">
@@ -152,17 +223,18 @@ function renderCostCards(){
   const all=mergedRecipes();
   document.getElementById("recipeCards").innerHTML=all.map(r=>{
     const p=r.costProduct;
-    const cost=batchCost(p), pc=perCookie(p), pd=perDozen(p), f=flags(p);
+    const cost=batchCostForRecipe(r), pc=perCookieForRecipe(r), pd=perDozenForRecipe(r), f=flags(p);
     return`
       <article class="cost-card ${!p||cost<=0?"needs-cleanup":""}">
         <div class="cost-top">
           <div>
-            <p class="eyebrow">${p?`${number(p.batches)||1} ${(number(p.batches)||1)===1?"batch":"batches"}`:"text only"}</p>
+            <p class="eyebrow">${p?`${selectedBatches(r)} ${selectedBatches(r)===1?"batch":"batches"}`:"text only"}</p>
             <h3>${r.name}</h3>
             <span>${p?(p.yieldLabel||r.yield):(r.yield||"Yield TBD")}</span>
           </div>
           <strong>${money(cost)}</strong>
         </div>
+        ${batchControlHtml(r,true)}
         <div class="cost-stats">
           <span><small>Each</small><b>${money(pc)}</b></span>
           <span><small>Dozen</small><b>${money(pd)}</b></span>
@@ -186,38 +258,40 @@ function renderIngredients(){
   `).join(""):`<div class="empty-state">No ingredient costs loaded yet.</div>`;
 }
 function renderCleanup(){
-  const rows=mergedRecipes().map(r=>({r,p:r.costProduct,f:flags(r.costProduct),cost:batchCost(r.costProduct)})).filter(x=>!x.p||x.f>0||x.cost<=0).sort((a,b)=>(b.f-a.f)||(a.cost-b.cost));
+  const rows=mergedRecipes().map(r=>({r,p:r.costProduct,f:flags(r.costProduct),cost:batchCostForRecipe(r)})).filter(x=>!x.p||x.f>0||x.cost<=0).sort((a,b)=>(b.f-a.f)||(a.cost-b.cost));
   document.getElementById("cleanupList").innerHTML=rows.length?rows.map(x=>`
     <div class="list-row">
-      <div><strong>${x.r.name}</strong><span>${!x.p?"Recipe text has no matching sheet cost yet":`${x.f} zero amount/cost lines • Batch ${money(x.cost)}`}</span></div>
+      <div><strong>${x.r.name}</strong><span>${!x.p?"Recipe text has no matching sheet cost yet":`${x.f} zero amount/cost lines • ${selectedBatches(x.r)} batch • ${money(x.cost)}`}</span></div>
       <em class="${x.p&&x.cost>0?"warn":"bad"}">${x.p?"Review":"Link"}</em>
     </div>`).join(""):`<div class="empty-state">No obvious cleanup flags.</div>`;
-  const p=priced();
-  const high=[...p].sort((a,b)=>perCookie(b)-perCookie(a))[0],low=[...p].sort((a,b)=>perCookie(a)-perCookie(b))[0];
+  const p=pricedRecipes();
+  const high=[...p].sort((a,b)=>perCookieForRecipe(b)-perCookieForRecipe(a))[0],low=[...p].sort((a,b)=>perCookieForRecipe(a)-perCookieForRecipe(b))[0];
   document.getElementById("costExtremes").innerHTML=[
-    high&&["Most expensive",high.name,`${money(perCookie(high))}/cookie • ${money(perDozen(high))}/dozen`],
-    low&&["Least expensive",low.name,`${money(perCookie(low))}/cookie • ${money(perDozen(low))}/dozen`],
-    ["Costed recipes",p.length,"Live from sheet"],
-    ["Recipe library",mergedRecipes().length,"Cook cards available"]
+    high&&["Most expensive",high.name,`${money(perCookieForRecipe(high))}/cookie • ${money(perDozenForRecipe(high))}/dozen`],
+    low&&["Least expensive",low.name,`${money(perCookieForRecipe(low))}/cookie • ${money(perDozenForRecipe(low))}/dozen`],
+    ["Production cost",money(mergedRecipes().reduce((s,r)=>s+batchCostForRecipe(r),0)),"All selected batches"],
+    ["Total batches",mergedRecipes().reduce((s,r)=>s+selectedBatches(r),0),"Across recipe cards"]
   ].filter(Boolean).map(x=>`<div class="list-row"><div><strong>${x[0]}</strong><span>${x[2]}</span></div><b>${x[1]}</b></div>`).join("");
 }
 function renderReport(){
+  const all=mergedRecipes();
   const cards=[
     ["Live source",dashboardData.source||"Recipe library",dashboardData.generatedAt?`Generated ${new Date(dashboardData.generatedAt).toLocaleString()}`:"Built into dashboard"],
-    ["Recipe workspace",mergedRecipes().length,"List + detail mode"],
-    ["Ingredient chips",dashboardData.ingredients.length,"Compact cost view"],
-    ["Next backend step","Sell prices","Add price tab for profit/margin"]
+    ["Batch controls","On","Saved in this browser"],
+    ["Production cost",money(all.reduce((s,r)=>s+batchCostForRecipe(r),0)),"Based on current batch counts"],
+    ["Next backend step","Save to Sheet","Optional later"]
   ];
   document.getElementById("snackReport").innerHTML=cards.map(c=>`<article class="report-card"><p>${c[0]}</p><strong>${c[1]}</strong><span>${c[2]}</span></article>`).join("");
 }
-function renderAll(){
+function renderAll(rebind=true){
   renderOverview();
-  renderRecipeList();
+  renderRecipeList(document.getElementById("recipeSearch")?.value||"");
   renderRecipeDetail();
   renderCostCards();
   renderIngredients();
   renderCleanup();
   renderReport();
+  bindBatchControls();
 }
 async function init(){
   let live=false,msg="";
