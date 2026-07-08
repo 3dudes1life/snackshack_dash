@@ -348,3 +348,23 @@ th, td { padding: 13px; }
   .dash-logo { width: 48px; height: 48px; border-radius: 15px; }
   .compact-dashboard-head h1 { font-size: 1.85rem; }
 }
+
+/* Recipe-first live Google Sheet polish */
+.recipe-card.needs-work {
+  background: #fff8e8;
+  border-color: rgba(197, 119, 20, .35);
+}
+.recipe-card.needs-work .recipe-top strong {
+  color: #9b5a00;
+}
+.alert.info {
+  border-color: #159a85;
+  background: #eaf9f5;
+}
+#ordersTable td[colspan] {
+  padding: 22px;
+}
+#ordersTable td[colspan] strong {
+  display: block;
+  margin-bottom: 4px;
+}

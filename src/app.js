@@ -1,5 +1,6 @@
 const money = value => Number(value || 0).toLocaleString(undefined, { style: "currency", currency: "USD" });
-const today = new Date();
+const number = value => Number(value || 0) || 0;
+const plural = (count, one, many = `${one}s`) => Number(count) === 1 ? one : many;
 let activeFilter = "all";
 
 function jsonp(url) {
@@ -29,80 +30,73 @@ async function loadBackendData() {
   try {
     const liveData = await jsonp(apiUrl);
     if (liveData && !liveData.error) {
-      dashboardData = { ...dashboardData, ...liveData };
-      dashboardData.orders = liveData.orders || dashboardData.orders || [];
-      dashboardData.products = liveData.products || dashboardData.products || [];
-      dashboardData.ingredients = liveData.ingredients || dashboardData.ingredients || [];
-      dashboardData.customers = liveData.customers || dashboardData.customers || [];
-      dashboardData.goal = liveData.goal || dashboardData.goal;
+      dashboardData = {
+        ...dashboardData,
+        ...liveData,
+        orders: liveData.orders || [],
+        products: liveData.products || [],
+        ingredients: liveData.ingredients || [],
+        customers: liveData.customers || [],
+        goal: liveData.goal || dashboardData.goal
+      };
+    } else {
+      console.warn("Backend returned an error:", liveData);
     }
   } catch (error) {
     console.warn("Using sample data because backend did not load:", error);
   }
 }
 
-function ingredientCost(product) {
-  return product.recipe.reduce((sum, line) => {
-    const ingredient = dashboardData.ingredients.find(item => item.name === line.ingredient);
-    return sum + (ingredient ? ingredient.costPerUnit * line.amount : 0);
-  }, 0);
+function recipeBatchCost(product) {
+  return number(product.totalBatchCost) || product.recipe.reduce((sum, line) => sum + number(line.ingredientCost), 0);
 }
 
-function productCost(product) {
-  return ingredientCost(product) + Number(product.packagingCost || 0);
+function recipeCostPerCookie(product) {
+  return number(product.costPerCookie) || (number(product.batchYieldUnits) ? recipeBatchCost(product) / number(product.batchYieldUnits) : 0);
 }
 
-function productProfit(product) {
-  return Number(product.salePrice || 0) - productCost(product);
+function recipeCostPerDozen(product) {
+  return number(product.costPerDozen) || recipeCostPerCookie(product) * 12;
 }
 
-function getProductBySku(sku) {
-  return dashboardData.products.find(product => product.sku === sku);
+function recipesWithCosts() {
+  return (dashboardData.products || []).filter(product => recipeBatchCost(product) > 0 || recipeCostPerCookie(product) > 0);
 }
 
-function orderTotal(order) {
-  return order.items.reduce((sum, item) => sum + item.qty * item.unitPrice, 0);
+function recipesNeedingCosts() {
+  return (dashboardData.products || []).filter(product => recipeBatchCost(product) <= 0 && recipeCostPerCookie(product) <= 0);
 }
 
-function orderCost(order) {
-  return order.items.reduce((sum, item) => {
-    const product = getProductBySku(item.sku);
-    return sum + (product ? productCost(product) * item.qty : 0);
-  }, 0);
+function totalPlannedCookies() {
+  return (dashboardData.products || []).reduce((sum, product) => sum + number(product.batchYieldUnits), 0);
 }
 
-function orderProfit(order) {
-  return orderTotal(order) - orderCost(order);
+function totalPlannedCost() {
+  return (dashboardData.products || []).reduce((sum, product) => sum + recipeBatchCost(product), 0);
 }
 
-function daysUntil(dateString) {
-  const date = new Date(`${dateString}T12:00:00`);
-  return Math.ceil((date - today) / (1000 * 60 * 60 * 24));
-}
-
-function statusClass(status) {
-  const normalized = status.toLowerCase();
-  if (["ready", "shipped", "picked up", "complete"].includes(normalized)) return "success";
-  if (["new", "baking", "cooling", "packaged"].includes(normalized)) return "warning";
-  return "danger";
+function renderGoal() {
+  const { current, target, label } = dashboardData.goal || { current: 0, target: 75, label: "Orders this month" };
+  const percent = Math.min(100, Math.round((number(current) / number(target || 1)) * 100));
+  document.getElementById("goalText").textContent = `${current} / ${target} ${label}`;
+  document.getElementById("goalProgress").style.width = `${percent}%`;
 }
 
 function renderOverview() {
-  const orders = dashboardData.orders;
-  const openOrders = orders.filter(order => !["Shipped", "Picked Up", "Complete"].includes(order.status));
-  const dueToday = orders.filter(order => daysUntil(order.dueDate) <= 0 && order.status !== "Ready");
-  const revenue = orders.reduce((sum, order) => sum + orderTotal(order), 0);
-  const profit = orders.reduce((sum, order) => sum + orderProfit(order), 0);
-  const etsy = orders.filter(order => order.platform === "Etsy").length;
-  const square = orders.filter(order => order.platform === "Square").length;
+  const products = dashboardData.products || [];
+  const ingredients = dashboardData.ingredients || [];
+  const priced = recipesWithCosts();
+  const needing = recipesNeedingCosts();
+  const avgCookieCost = priced.length ? priced.reduce((sum, p) => sum + recipeCostPerCookie(p), 0) / priced.length : 0;
+  const highest = [...priced].sort((a, b) => recipeCostPerCookie(b) - recipeCostPerCookie(a))[0];
 
   const cards = [
-    { label: "Open Orders", value: openOrders.length, detail: "Still in the kitchen flow", tone: "cookie" },
-    { label: "Due Today", value: dueToday.length, detail: dueToday.length ? "Needs Caleb's eyes" : "Nothing on fire", tone: dueToday.length ? "danger" : "success" },
-    { label: "Revenue", value: money(revenue), detail: "Current loaded orders", tone: "money" },
-    { label: "Profit", value: money(profit), detail: `${Math.round((profit / revenue) * 100 || 0)}% blended margin`, tone: "success" },
-    { label: "Etsy", value: etsy, detail: "Online snackers", tone: "etsy" },
-    { label: "Square", value: square, detail: "Local / direct orders", tone: "square" }
+    { label: "Recipes Loaded", value: products.length, detail: "Pulled from Caleb's Google Sheet", tone: "success" },
+    { label: "Ingredients", value: ingredients.length, detail: "Master cost library", tone: "square" },
+    { label: "Planned Cookies", value: totalPlannedCookies(), detail: "Based on sheet batch counts", tone: "cookie" },
+    { label: "Planned Cost", value: money(totalPlannedCost()), detail: "Ingredient cost from recipes", tone: "money" },
+    { label: "Avg Cost/Cookie", value: money(avgCookieCost), detail: "Across priced recipes", tone: "etsy" },
+    { label: "Needs Cleanup", value: needing.length, detail: "Recipes still showing $0", tone: needing.length ? "danger" : "success" }
   ];
 
   document.getElementById("overview").innerHTML = cards.map(card => `
@@ -112,119 +106,156 @@ function renderOverview() {
       <span>${card.detail}</span>
     </article>
   `).join("");
-}
 
-function renderGoal() {
-  const { current, target, label } = dashboardData.goal;
-  const percent = Math.min(100, Math.round((current / target) * 100));
-  document.getElementById("goalText").textContent = `${current} / ${target} ${label}`;
-  document.getElementById("goalProgress").style.width = `${percent}%`;
+  const title = document.querySelector(".compact-dashboard-head h1");
+  if (title) title.textContent = highest ? `${highest.name}: ${money(recipeCostPerCookie(highest))} per cookie` : "Recipe costing is live.";
 }
 
 function renderAlerts() {
   const alerts = [];
+  const products = dashboardData.products || [];
+  const priced = recipesWithCosts();
+  const needing = recipesNeedingCosts();
+  const generated = dashboardData.generatedAt ? new Date(dashboardData.generatedAt).toLocaleString() : "live";
 
-  dashboardData.orders.forEach(order => {
-    const due = daysUntil(order.dueDate);
-    if (due < 0 && order.status !== "Ready") alerts.push({ type: "danger", text: `${order.id} is overdue for ${order.customer}.` });
-    if (due === 0) alerts.push({ type: "warning", text: `${order.id} is due today: ${order.items.map(i => `${i.qty}× ${i.name}`).join(", ")}.` });
-    if (order.status === "New") alerts.push({ type: "info", text: `${order.id} is new from ${order.platform}. Start production check.` });
-  });
+  alerts.push({ type: "success", text: `Google Sheet connected. ${products.length} recipes and ${(dashboardData.ingredients || []).length} ingredient costs loaded.` });
+  alerts.push({ type: "info", text: `Last backend refresh: ${generated}.` });
 
-  dashboardData.ingredients
-    .filter(item => item.stock <= item.reorderAt)
-    .forEach(item => alerts.push({ type: "warning", text: `Low stock: ${item.name}. Current: ${item.stock} ${item.unit}.` }));
+  if (needing.length) {
+    alerts.push({ type: "warning", text: `${needing.length} recipes are returning $0 cost because their batch/amount-needed cells are still zero or ingredient names don't match.` });
+  }
 
-  document.getElementById("alerts").innerHTML = alerts.length ? alerts.map(alert => `
+  const expensive = [...priced].sort((a, b) => recipeCostPerCookie(b) - recipeCostPerCookie(a))[0];
+  if (expensive) {
+    alerts.push({ type: "warning", text: `Highest cost cookie right now: ${expensive.name} at ${money(recipeCostPerCookie(expensive))} each / ${money(recipeCostPerDozen(expensive))} per dozen.` });
+  }
+
+  const cheap = [...priced].sort((a, b) => recipeCostPerCookie(a) - recipeCostPerCookie(b))[0];
+  if (cheap) {
+    alerts.push({ type: "success", text: `Lowest cost cookie right now: ${cheap.name} at ${money(recipeCostPerCookie(cheap))} each.` });
+  }
+
+  document.getElementById("alerts").innerHTML = alerts.map(alert => `
     <div class="alert ${alert.type}">${alert.text}</div>
-  `).join("") : `<div class="alert success">No chaos. Caleb can breathe.</div>`;
+  `).join("");
 }
 
 function renderOrders() {
-  const rows = dashboardData.orders
+  const orders = dashboardData.orders || [];
+  if (!orders.length) {
+    document.getElementById("ordersTable").innerHTML = `
+      <tr>
+        <td colspan="9"><strong>No Square/Etsy orders are connected yet.</strong><span>This section is ready for Phase 2. Right now the live data is recipe costing from Google Sheets.</span></td>
+      </tr>
+    `;
+    return;
+  }
+
+  const rows = orders
     .filter(order => activeFilter === "all" || order.platform === activeFilter || order.status === activeFilter)
     .map(order => `
       <tr>
-        <td><strong>${order.id}</strong><span>${order.pickupOrShip}</span></td>
-        <td><span class="source-pill ${order.platform.toLowerCase()}">${order.platform}</span></td>
-        <td>${order.customer}<span>${order.notes || ""}</span></td>
-        <td>${order.items.map(item => `${item.qty}× ${item.name}`).join("<br>")}</td>
-        <td>${order.dueDate}<span>${daysUntil(order.dueDate)} day(s)</span></td>
+        <td><strong>${order.id}</strong><span>${order.pickupOrShip || ""}</span></td>
+        <td><span class="source-pill ${String(order.platform || "").toLowerCase()}">${order.platform || "Manual"}</span></td>
+        <td>${order.customer || ""}<span>${order.notes || ""}</span></td>
+        <td>${(order.items || []).map(item => `${item.qty}× ${item.name}`).join("<br>")}</td>
+        <td>${order.dueDate || ""}</td>
         <td>${money(orderTotal(order))}</td>
         <td>${money(orderCost(order))}</td>
         <td>${money(orderProfit(order))}</td>
-        <td><span class="pill ${statusClass(order.status)}">${order.status}</span></td>
+        <td><span class="pill warning">${order.status || "New"}</span></td>
       </tr>
     `).join("");
 
   document.getElementById("ordersTable").innerHTML = rows;
 }
 
+function orderTotal(order) {
+  return (order.items || []).reduce((sum, item) => sum + number(item.qty) * number(item.unitPrice), 0);
+}
+
+function orderCost(order) {
+  return (order.items || []).reduce((sum, item) => {
+    const product = (dashboardData.products || []).find(p => p.sku === item.sku || p.name === item.name);
+    return sum + (product ? recipeCostPerDozen(product) * number(item.qty) : 0);
+  }, 0);
+}
+
+function orderProfit(order) {
+  return orderTotal(order) - orderCost(order);
+}
+
 function renderProductionQueue() {
-  const open = dashboardData.orders.filter(order => !["Ready", "Shipped", "Complete"].includes(order.status));
-  document.getElementById("productionQueue").innerHTML = open.map(order => `
-    <div class="task-card">
-      <div>
-        <strong>${order.items.map(item => `${item.qty}× ${item.name}`).join(", ")}</strong>
-        <p>${order.customer} • ${order.platform} • Due ${order.dueDate}</p>
+  const products = [...(dashboardData.products || [])].sort((a, b) => recipeBatchCost(b) - recipeBatchCost(a));
+  document.getElementById("productionQueue").innerHTML = products.slice(0, 10).map(product => {
+    const cost = recipeBatchCost(product);
+    const statusClass = cost > 0 ? "success" : "warning";
+    return `
+      <div class="task-card">
+        <div>
+          <strong>${product.name}</strong>
+          <p>${number(product.batches) || 1} ${plural(number(product.batches) || 1, "batch", "batches")} • ${product.yieldLabel || "Yield missing"} • ${money(recipeCostPerDozen(product))}/dozen</p>
+        </div>
+        <span class="pill ${statusClass}">${cost > 0 ? money(cost) : "Needs cost"}</span>
       </div>
-      <span class="pill ${statusClass(order.status)}">${order.status}</span>
-    </div>
-  `).join("");
+    `;
+  }).join("");
 }
 
 function forecastIngredients() {
   const usage = {};
-  dashboardData.orders
-    .filter(order => !["Ready", "Shipped", "Complete"].includes(order.status))
-    .forEach(order => {
-      order.items.forEach(item => {
-        const product = getProductBySku(item.sku);
-        if (!product) return;
-        product.recipe.forEach(line => {
-          const key = `${line.ingredient}__${line.unit}`;
-          usage[key] = usage[key] || { ingredient: line.ingredient, unit: line.unit, amount: 0 };
-          usage[key].amount += line.amount * item.qty;
-        });
-      });
+  (dashboardData.products || []).forEach(product => {
+    (product.recipe || []).forEach(line => {
+      if (!number(line.amount)) return;
+      const key = `${line.ingredient}__${line.unit}`;
+      usage[key] = usage[key] || { ingredient: line.ingredient, unit: line.unit, amount: 0, cost: 0 };
+      usage[key].amount += number(line.amount);
+      usage[key].cost += number(line.ingredientCost);
     });
-  return Object.values(usage).sort((a, b) => b.amount - a.amount);
+  });
+  return Object.values(usage).sort((a, b) => b.cost - a.cost);
 }
 
 function renderForecast() {
   const forecast = forecastIngredients();
-  const max = Math.max(...forecast.map(item => item.amount), 1);
-  document.getElementById("ingredientForecast").innerHTML = forecast.map(item => `
+  if (!forecast.length) {
+    document.getElementById("ingredientForecast").innerHTML = `<div class="alert warning">No planned ingredient usage yet. Update batch counts / amount needed cells in Google Sheets.</div>`;
+    return;
+  }
+  const max = Math.max(...forecast.map(item => item.cost), 1);
+  document.getElementById("ingredientForecast").innerHTML = forecast.slice(0, 12).map(item => `
     <div class="bar-row">
-      <div><strong>${item.ingredient}</strong><span>${item.amount.toFixed(2)} ${item.unit}</span></div>
-      <div class="bar-track"><span style="width:${(item.amount / max) * 100}%"></span></div>
+      <div><strong>${item.ingredient}</strong><span>${item.amount.toFixed(2)} ${item.unit} • ${money(item.cost)}</span></div>
+      <div class="bar-track"><span style="width:${Math.max(4, (item.cost / max) * 100)}%"></span></div>
     </div>
   `).join("");
 }
 
 function renderRecipes() {
-  document.getElementById("recipeCards").innerHTML = dashboardData.products.map(product => {
-    const cost = productCost(product);
-    const profit = productProfit(product);
-    const margin = Math.round((profit / product.salePrice) * 100);
+  const sorted = [...(dashboardData.products || [])].sort((a, b) => recipeCostPerCookie(b) - recipeCostPerCookie(a));
+  document.getElementById("recipeCards").innerHTML = sorted.map(product => {
+    const batchCost = recipeBatchCost(product);
+    const perCookie = recipeCostPerCookie(product);
+    const perDozen = recipeCostPerDozen(product);
+    const needsWork = batchCost <= 0;
     return `
-      <article class="recipe-card">
+      <article class="recipe-card ${needsWork ? "needs-work" : ""}">
         <div class="recipe-top">
           <div>
-            <p class="eyebrow">${product.category}</p>
+            <p class="eyebrow">${number(product.batches) || 1} ${plural(number(product.batches) || 1, "batch", "batches")}</p>
             <h4>${product.name}</h4>
-            <span>${product.yieldLabel}</span>
+            <span>${product.yieldLabel || "Yield missing"}</span>
           </div>
-          <strong>${money(product.salePrice)}</strong>
+          <strong>${money(batchCost)}</strong>
         </div>
         <div class="mini-stats">
-          <span>Cost <b>${money(cost)}</b></span>
-          <span>Profit <b>${money(profit)}</b></span>
-          <span>Margin <b>${margin}%</b></span>
+          <span>Cost / Cookie <b>${money(perCookie)}</b></span>
+          <span>Cost / Dozen <b>${money(perDozen)}</b></span>
+          <span>Ingredient Lines <b>${(product.recipe || []).length}</b></span>
         </div>
         <details>
-          <summary>Ingredient breakdown</summary>
-          ${product.recipe.map(line => `<p>${line.ingredient}: ${line.amount} ${line.unit}</p>`).join("")}
+          <summary>${needsWork ? "Needs batch/cost cleanup" : "Ingredient cost breakdown"}</summary>
+          ${(product.recipe || []).map(line => `<p>${line.ingredient}: ${line.amount || 0} ${line.unit || ""} — ${money(line.ingredientCost)}</p>`).join("")}
         </details>
       </article>
     `;
@@ -232,56 +263,50 @@ function renderRecipes() {
 }
 
 function renderIngredients() {
-  const low = dashboardData.ingredients.filter(item => item.stock <= item.reorderAt);
-  document.getElementById("lowStockCount").textContent = `${low.length} low stock`;
-  document.getElementById("ingredientGrid").innerHTML = dashboardData.ingredients.map(item => `
-    <article class="inventory-card ${item.stock <= item.reorderAt ? "low" : ""}">
+  const ingredients = [...(dashboardData.ingredients || [])].sort((a, b) => String(a.name).localeCompare(String(b.name)));
+  document.getElementById("lowStockCount").textContent = `${ingredients.length} costs loaded`;
+  document.getElementById("ingredientGrid").innerHTML = ingredients.map(item => `
+    <article class="inventory-card">
       <p>${item.name}</p>
-      <strong>${item.stock} ${item.unit}</strong>
-      <span>${money(item.costPerUnit)} / ${item.unit} • Buy: ${item.shoppingUnit}</span>
+      <strong>${money(item.costPerUnit)} / ${item.unit || item.recipeUnit || "unit"}</strong>
+      <span>Package: ${item.shoppingUnit || item.packageSize || "—"} • Price: ${money(item.price)}</span>
     </article>
   `).join("");
 }
 
 function renderCustomers() {
-  document.getElementById("customerList").innerHTML = dashboardData.customers.map(customer => `
+  const customers = dashboardData.customers || [];
+  document.getElementById("customerList").innerHTML = customers.length ? customers.map(customer => `
     <div class="leader-row">
       <div><strong>${customer.name}</strong><span>${customer.notes}</span></div>
       <b>${money(customer.lifetimeValue)}</b>
     </div>
-  `).join("");
+  `).join("") : `<div class="alert warning">Customer history starts when Square/Etsy orders are connected.</div>`;
 }
 
 function renderProducts() {
-  const totals = {};
-  dashboardData.orders.forEach(order => order.items.forEach(item => {
-    totals[item.name] = totals[item.name] || { qty: 0, revenue: 0 };
-    totals[item.name].qty += item.qty;
-    totals[item.name].revenue += item.qty * item.unitPrice;
-  }));
-
-  document.getElementById("productLeaderboard").innerHTML = Object.entries(totals)
-    .sort((a, b) => b[1].revenue - a[1].revenue)
-    .map(([name, data]) => `
-      <div class="leader-row">
-        <div><strong>${name}</strong><span>${data.qty} sold/ordered</span></div>
-        <b>${money(data.revenue)}</b>
-      </div>
-    `).join("");
+  const products = [...(dashboardData.products || [])].sort((a, b) => recipeCostPerDozen(b) - recipeCostPerDozen(a));
+  document.getElementById("productLeaderboard").innerHTML = products.slice(0, 10).map(product => `
+    <div class="leader-row">
+      <div><strong>${product.name}</strong><span>${product.yieldLabel} • ${number(product.batches) || 1} ${plural(number(product.batches) || 1, "batch", "batches")}</span></div>
+      <b>${money(recipeCostPerDozen(product))}/doz</b>
+    </div>
+  `).join("");
 }
 
 function renderReport() {
-  const revenue = dashboardData.orders.reduce((sum, order) => sum + orderTotal(order), 0);
-  const cost = dashboardData.orders.reduce((sum, order) => sum + orderCost(order), 0);
-  const profit = revenue - cost;
-  const topMargin = [...dashboardData.products].sort((a, b) => productProfit(b) - productProfit(a))[0];
-
+  const products = dashboardData.products || [];
+  const priced = recipesWithCosts();
+  const missing = recipesNeedingCosts();
+  const highest = [...priced].sort((a, b) => recipeCostPerCookie(b) - recipeCostPerCookie(a))[0];
+  const lowest = [...priced].sort((a, b) => recipeCostPerCookie(a) - recipeCostPerCookie(b))[0];
   const cards = [
-    { title: "Best profit item", value: topMargin.name, note: `${money(productProfit(topMargin))} profit per ${topMargin.yieldLabel}` },
-    { title: "Ingredient spend", value: money(cost), note: "Based on current loaded orders" },
-    { title: "Net profit", value: money(profit), note: "Before labor, fees, and taxes" },
-    { title: "Next move", value: "Protect due dates", note: "New orders need production check first." }
+    { title: "Most expensive", value: highest ? highest.name : "—", note: highest ? `${money(recipeCostPerCookie(highest))}/cookie • ${money(recipeCostPerDozen(highest))}/dozen` : "No priced recipes yet" },
+    { title: "Least expensive", value: lowest ? lowest.name : "—", note: lowest ? `${money(recipeCostPerCookie(lowest))}/cookie • ${money(recipeCostPerDozen(lowest))}/dozen` : "No priced recipes yet" },
+    { title: "Recipes with costs", value: `${priced.length} / ${products.length}`, note: "Pulled from the recipe workbook" },
+    { title: "Needs cleanup", value: missing.length, note: "Usually zero batch counts or unmatched ingredient names" }
   ];
+
   document.getElementById("snackReport").innerHTML = cards.map(card => `
     <article class="report-card"><p>${card.title}</p><strong>${card.value}</strong><span>${card.note}</span></article>
   `).join("");
@@ -313,8 +338,8 @@ async function init() {
   renderReport();
   bindFilters();
 
-  document.getElementById("refreshButton").addEventListener("click", init);
-  document.getElementById("printTodayButton").addEventListener("click", () => window.print());
+  document.getElementById("refreshButton")?.addEventListener("click", init);
+  document.getElementById("printTodayButton")?.addEventListener("click", () => window.print());
 }
 
 init();

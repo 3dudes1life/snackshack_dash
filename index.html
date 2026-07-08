@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>C-Dawg's Snack Shack Command Center</title>
-  <meta name="description" content="Compact order hub, baking queue, recipe costing, and ingredient-cost dashboard for C-Dawg's Snack Shack." />
+  <meta name="description" content="Recipe-first costing dashboard, baking queue, and ingredient-cost library for C-Dawg's Snack Shack." />
   <meta name="theme-color" content="#f7f1df" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="src/styles-compact.css?v=5-compact-gsheet-backend" />
+  <link rel="stylesheet" href="src/styles-compact.css?v=6-recipe-first" />
 </head>
 <body>
   <div class="site-shell">
@@ -45,8 +45,8 @@
         <div class="dashboard-title-row">
           <img src="icon.svg" alt="C-Dawg's" class="dash-logo" />
           <div>
-            <p class="eyebrow">Live bakery dashboard</p>
-            <h1>Here’s what needs baking.</h1>
+            <p class="eyebrow">Live recipe costing</p>
+            <h1>Recipe costing is live.</h1>
             <p class="subtitle-line">Cookies • Treats • Sourdough • Jams</p>
           </div>
         </div>
@@ -63,7 +63,7 @@
         <div>
           <p class="eyebrow">Action queue</p>
           <h3>Caleb Queue</h3>
-          <p class="muted">Orders, baking, pickups, shipping, and ingredients that can’t be missed.</p>
+          <p class="muted">Recipe costs, batch counts, cleanup warnings, and ingredient usage from the Google Sheet.</p>
         </div>
         <div id="alerts" class="alert-list"></div>
       </section>
@@ -107,8 +107,8 @@
         <div class="panel">
           <div class="section-heading">
             <div>
-              <p class="eyebrow">Kitchen workflow</p>
-              <h3>Baking Queue</h3>
+              <p class="eyebrow">Current workbook batches</p>
+              <h3>Batch Cost Queue</h3>
             </div>
           </div>
           <div id="productionQueue" class="task-list"></div>
@@ -116,8 +116,8 @@
         <div class="panel">
           <div class="section-heading">
             <div>
-              <p class="eyebrow">This week</p>
-              <h3>Ingredient Forecast</h3>
+              <p class="eyebrow">Current batch plan</p>
+              <h3>Ingredient Usage Forecast</h3>
             </div>
           </div>
           <div id="ingredientForecast" class="source-bars"></div>
@@ -127,10 +127,10 @@
       <section id="recipes" class="panel">
         <div class="section-heading">
           <div>
-            <p class="eyebrow">Profit by product</p>
+            <p class="eyebrow">Google Sheet recipes</p>
             <h3>Recipe Costing</h3>
           </div>
-          <span class="pill success">Google Sheet ingredient costs ready</span>
+          <span class="pill success">Live recipe workbook connected</span>
         </div>
         <div id="recipeCards" class="recipe-grid"></div>
       </section>
@@ -138,8 +138,8 @@
       <section id="ingredients" class="panel">
         <div class="section-heading">
           <div>
-            <p class="eyebrow">Shopping + stock</p>
-            <h3>Ingredient Inventory</h3>
+            <p class="eyebrow">Master cost list</p>
+            <h3>Ingredient Cost Library</h3>
           </div>
           <span class="pill warning" id="lowStockCount">0 low stock</span>
         </div>
@@ -177,6 +177,6 @@
 
   <script src="data/sample-data.js"></script>
   <script src="data/config.js"></script>
-  <script src="src/app.js?v=5-compact-gsheet-backend"></script>
+  <script src="src/app.js?v=6-recipe-first"></script>
 </body>
 </html>
