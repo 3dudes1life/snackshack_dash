@@ -21,3 +21,13 @@ Upload these files to GitHub to replace the current dashboard.
 
 ## Important
 Your current Apps Script backend can stay if it is already returning the recipe/cost JSON.
+
+
+## v11 Scroll Fix
+
+- Cook Mode recipe cards now use forced horizontal scrolling.
+- Recipe Cost cards now use forced horizontal scrolling.
+- Mouse wheel over those sections scrolls sideways.
+- Click-and-drag works on desktop.
+- Visible colored scrollbars were added.
+- Ingredient cost area heading changed from “Cute Ingredient Cost Chips” to “Ingredient Cost Chips”.

@@ -3,33 +3,33 @@
 <head>
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>C-Dawg's Snack Shack Command Center</title>
-<link rel="manifest" href="manifest.webmanifest?v=10-cute-final"/>
-<link rel="icon" href="icon.svg?v=10-cute-final" type="image/svg+xml"/>
+<link rel="manifest" href="manifest.webmanifest?v=11-scroll-fix"/>
+<link rel="icon" href="icon.svg?v=11-scroll-fix" type="image/svg+xml"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="src/styles.css?v=10-cute-final"/>
+<link rel="stylesheet" href="src/styles.css?v=11-scroll-fix"/>
 </head>
 <body>
 <div class="site-shell">
 <header class="site-header">
-<a class="mini-brand" href="#home"><img src="icon.svg?v=10-cute-final" alt="C-Dawg's"/><span>C-Dawg's</span></a>
+<a class="mini-brand" href="#home"><img src="icon.svg?v=11-scroll-fix" alt="C-Dawg's"/><span>C-Dawg's</span></a>
 <nav class="site-nav"><a href="#home">Home</a><a class="nav-shop" href="#cook">Cook Mode</a><a href="#costs">Costs</a><a href="#ingredients">Ingredients</a><a href="#cleanup">Cleanup</a><a href="#report">Snack IQ</a></nav>
 <div class="header-actions"><button id="refreshButton" class="ghost-button">Refresh</button><button id="printTodayButton" class="primary-button">Print</button></div>
 </header>
 <main class="main-content">
 <section id="home" class="status-strip">
-<div><p class="eyebrow">C-Dawg Recipe Binder</p><h1 id="statusTitle">Loading Caleb's recipes…</h1><p class="muted" id="statusMessage">Cute cook cards + live ingredient costs.</p></div>
+<div><p class="eyebrow">C-Dawg Recipe Binder</p><h1 id="statusTitle">Loading Caleb's recipes…</h1><p class="muted" id="statusMessage">Recipe cards + live ingredient costs.</p></div>
 <div class="goal-chip"><p class="small-label">Recipe Library</p><strong id="recipeLibraryCount">Loading...</strong><div class="progress-track"><span id="goalProgress"></span></div></div>
 </section>
 <section id="overview" class="overview-grid"></section>
 <section id="cook" class="panel"><div class="section-heading"><div><p class="eyebrow">Cook Mode</p><h3>Scrollable Recipe Cards</h3><p class="muted">Pick a recipe and scroll inside the card while baking.</p></div><input id="recipeSearch" class="search-box" placeholder="Search cookies, jam, treats..."/></div><div id="cookCards" class="cook-scroll"></div></section>
 <section id="costs" class="panel"><div class="section-heading"><div><p class="eyebrow">Recipe Costs</p><h3>Scrollable Cost Cards</h3><p class="muted">Live costs from Google Sheet when connected. No giant wall of cards.</p></div><span class="pill" id="recipeCountPill">Waiting</span></div><div id="recipeCards" class="cost-scroll"></div></section>
-<section id="ingredients" class="panel compact-panel"><div class="section-heading"><div><p class="eyebrow">Master Cost List</p><h3>Cute Ingredient Cost Chips</h3><p class="muted">Smaller, softer, easier to scan.</p></div><span class="pill" id="ingredientCountPill">0 costs</span></div><div id="ingredientGrid" class="ingredient-chip-grid"></div></section>
+<section id="ingredients" class="panel compact-panel"><div class="section-heading"><div><p class="eyebrow">Master Cost List</p><h3>Ingredient Cost Chips</h3><p class="muted">Compact, softer, easier to scan.</p></div><span class="pill" id="ingredientCountPill">0 costs</span></div><div id="ingredientGrid" class="ingredient-chip-grid"></div></section>
 <section id="cleanup" class="two-col"><div class="panel"><div class="section-heading"><div><p class="eyebrow">Needs Attention</p><h3>Recipe Cleanup Queue</h3><p class="muted">Batch counts, amount-needed cells, or ingredient name cleanup.</p></div></div><div id="cleanupList" class="task-list"></div></div><div class="panel"><div class="section-heading"><div><p class="eyebrow">Cost Extremes</p><h3>What Stands Out</h3></div></div><div id="costExtremes" class="leaderboard"></div></div></section>
 <section id="report" class="panel report-panel"><p class="eyebrow">Snack IQ</p><h3>What the bakery is telling us</h3><div id="snackReport" class="report-grid"></div></section>
 </main></div>
-<script src="data/recipe-library.js?v=10-cute-final"></script>
-<script src="data/config.js?v=10-cute-final"></script>
-<script src="src/app.js?v=10-cute-final"></script>
+<script src="data/recipe-library.js?v=11-scroll-fix"></script>
+<script src="data/config.js?v=11-scroll-fix"></script>
+<script src="src/app.js?v=11-scroll-fix"></script>
 </body></html>

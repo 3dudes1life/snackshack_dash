@@ -21,7 +21,48 @@ function renderCookCards(filter=""){const q=filter.trim().toLowerCase();const al
 function renderCostCards(){const all=mergedRecipes();document.getElementById("recipeCards").innerHTML=all.map(r=>{const p=r.costProduct;const cost=batchCost(p), pc=perCookie(p), pd=perDozen(p), f=flags(p);return`<article class="recipe-card ${!p||cost<=0?"needs-cleanup":""}"><div class="recipe-top"><div><p class="eyebrow">${p?`${number(p.batches)||1} ${(number(p.batches)||1)===1?"batch":"batches"}`:"text only"}</p><h4>${r.name}</h4><span>${p?(p.yieldLabel||r.yield):(r.yield||"Yield TBD")}</span></div><strong>${money(cost)}</strong></div><div class="mini-stats"><span>Cookie <b>${money(pc)}</b></span><span>Dozen <b>${money(pd)}</b></span><span>Flags <b>${f}</b></span></div><details><summary>${p?"Cost breakdown":"No sheet cost yet"}</summary>${p?(p.recipe||[]).map(l=>`<p><b>${l.ingredient}</b><span>${number(l.amount).toFixed(2)} ${l.unit||""} • ${money(l.ingredientCost)}</span></p>`).join(""):`<p><b>Recipe text loaded.</b><span>Add matching cost rows.</span></p>`}</details></article>`}).join("")}
 function renderIngredients(){const ing=[...(dashboardData.ingredients||[])].sort((a,b)=>a.name.localeCompare(b.name));document.getElementById("ingredientGrid").innerHTML=ing.length?ing.map(i=>`<article class="ingredient-chip"><div><strong>${i.name}</strong><span>${i.shoppingUnit||i.packageSize||"package"} • ${money(i.price)}</span></div><b>${money(i.costPerUnit)} <small>/ ${i.unit||i.recipeUnit||"unit"}</small></b></article>`).join(""):`<div class="empty-state full">No ingredient costs loaded yet.</div>`}
 function renderCleanup(){const rows=mergedRecipes().map(r=>({r,p:r.costProduct,f:flags(r.costProduct),cost:batchCost(r.costProduct)})).filter(x=>!x.p||x.f>0||x.cost<=0).sort((a,b)=>(b.f-a.f)||(a.cost-b.cost));document.getElementById("cleanupList").innerHTML=rows.length?rows.map(x=>`<div class="task-card"><div><strong>${x.r.name}</strong><p>${!x.p?"Recipe text has no matching sheet cost yet":`${x.f} zero amount/cost lines • Batch ${money(x.cost)}`}</p></div><span class="pill ${x.p&&x.cost>0?"warning":"danger"}">${x.p?"Review":"Link"}</span></div>`).join(""):`<div class="alert success">No obvious cleanup flags.</div>`;const p=priced();const high=[...p].sort((a,b)=>perCookie(b)-perCookie(a))[0],low=[...p].sort((a,b)=>perCookie(a)-perCookie(b))[0];document.getElementById("costExtremes").innerHTML=[high&&["Most expensive",high.name,`${money(perCookie(high))}/cookie • ${money(perDozen(high))}/dozen`],low&&["Least expensive",low.name,`${money(perCookie(low))}/cookie • ${money(perDozen(low))}/dozen`],["Costed recipes",p.length,"Live from sheet"],["Recipe library",mergedRecipes().length,"Cook cards available"]].filter(Boolean).map(x=>`<div class="leader-row"><div><strong>${x[0]}</strong><span>${x[2]}</span></div><b>${x[1]}</b></div>`).join("")}
+
+function enableHorizontalScroll(selector) {
+  document.querySelectorAll(selector).forEach(scroller => {
+    scroller.addEventListener("wheel", event => {
+      if (Math.abs(event.deltaY) > Math.abs(event.deltaX)) {
+        scroller.scrollLeft += event.deltaY;
+        event.preventDefault();
+      }
+    }, { passive: false });
+
+    let isDown = false;
+    let startX = 0;
+    let scrollLeft = 0;
+
+    scroller.addEventListener("mousedown", event => {
+      isDown = true;
+      startX = event.pageX - scroller.offsetLeft;
+      scrollLeft = scroller.scrollLeft;
+      scroller.classList.add("dragging");
+    });
+
+    window.addEventListener("mouseup", () => {
+      isDown = false;
+      scroller.classList.remove("dragging");
+    });
+
+    scroller.addEventListener("mouseleave", () => {
+      isDown = false;
+      scroller.classList.remove("dragging");
+    });
+
+    scroller.addEventListener("mousemove", event => {
+      if (!isDown) return;
+      event.preventDefault();
+      const x = event.pageX - scroller.offsetLeft;
+      const walk = (x - startX) * 1.25;
+      scroller.scrollLeft = scrollLeft - walk;
+    });
+  });
+}
+
 function renderReport(){const cards=[["Live source",dashboardData.source||"Recipe library",dashboardData.generatedAt?`Generated ${new Date(dashboardData.generatedAt).toLocaleString()}`:"Baked into dashboard"],["Cook cards",mergedRecipes().length,"Scrollable recipe mode"],["Ingredient chips",dashboardData.ingredients.length,"Cute compact cost view"],["Next backend step","Sell prices","Add price tab for profit/margin"]];document.getElementById("snackReport").innerHTML=cards.map(c=>`<article class="report-card"><p>${c[0]}</p><strong>${c[1]}</strong><span>${c[2]}</span></article>`).join("")}
 function renderAll(){renderOverview();renderCookCards();renderCostCards();renderIngredients();renderCleanup();renderReport()}
-async function init(){let live=false,msg="";try{await loadBackendData();live=true}catch(e){console.warn(e);msg=e.message}renderStatus(live,msg);renderAll();document.getElementById("recipeSearch")?.addEventListener("input",e=>renderCookCards(e.target.value));document.getElementById("refreshButton")?.addEventListener("click",()=>window.location.reload());document.getElementById("printTodayButton")?.addEventListener("click",()=>window.print())}
+async function init(){let live=false,msg="";try{await loadBackendData();live=true}catch(e){console.warn(e);msg=e.message}renderStatus(live,msg);renderAll();enableHorizontalScroll('.cook-scroll, .cost-scroll');document.getElementById("recipeSearch")?.addEventListener("input",e=>renderCookCards(e.target.value));document.getElementById("refreshButton")?.addEventListener("click",()=>window.location.reload());document.getElementById("printTodayButton")?.addEventListener("click",()=>window.print())}
 init();
