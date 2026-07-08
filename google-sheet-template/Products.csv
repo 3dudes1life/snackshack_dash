@@ -1,0 +1,5 @@
+SKU,Name,Category,SalePrice,YieldLabel,BatchYieldUnits,UnitLabel,PackagingCost
+COOKIE-CHOC-DOZEN,Chocolate Chip Cookies,Cookies,18,1 dozen,24,cookie,0.65
+COOKIE-SUGAR-DOZEN,Sugar Sprinkle Cookies,Cookies,16,1 dozen,24,cookie,0.65
+COOKIE-MOLASSES-DOZEN,Molasses Cookies,Cookies,17,1 dozen,24,cookie,0.65
+COWBOY-CANDY-8OZ,Cowboy Candy,Pantry,12,8 oz jar,6,jar,1.20

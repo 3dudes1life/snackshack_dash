@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>C-Dawg's Snack Shack Command Center</title>
-  <meta name="description" content="Order hub, baking queue, recipe costing, and profit dashboard for C-Dawg's Snack Shack." />
+  <meta name="description" content="Compact order hub, baking queue, recipe costing, and ingredient-cost dashboard for C-Dawg's Snack Shack." />
   <meta name="theme-color" content="#f7f1df" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="src/styles-website-vibe.css?v=4-website-vibe-no-dots" />
+  <link rel="stylesheet" href="src/styles-compact.css?v=5-compact-gsheet-backend" />
 </head>
 <body>
   <div class="site-shell">
@@ -29,29 +29,26 @@
         <a href="#overview">Home</a>
         <a href="#today">Caleb Queue</a>
         <a href="#orders" class="nav-shop">Orders</a>
+        <a href="#production">Production</a>
         <a href="#recipes">Recipe Costs</a>
         <a href="#ingredients">Ingredients</a>
         <a href="#report">Snack IQ</a>
       </nav>
-    </header>
-
-    <section class="hero-card">
-      <img src="icon.svg" alt="C-Dawg's Snack Shack" class="hero-logo" />
-      <p class="eyebrow">Live Bakery Command Center</p>
-      <h1>C-Dawg's Snack Shack</h1>
-      <p class="hero-subtitle">Cookies • Treats • Sourdough • Jams</p>
-      <p class="made-fresh">Made fresh in California</p>
-      <div class="hero-actions">
+      <div class="header-actions">
         <button id="refreshButton" class="ghost-button">Refresh</button>
         <button id="printTodayButton" class="primary-button">Print today</button>
       </div>
-    </section>
+    </header>
 
     <main class="main-content">
-      <section class="morning-strip">
-        <div>
-          <p class="eyebrow">Good morning, Caleb</p>
-          <h2>Here’s what needs baking.</h2>
+      <section class="morning-strip compact-dashboard-head">
+        <div class="dashboard-title-row">
+          <img src="icon.svg" alt="C-Dawg's" class="dash-logo" />
+          <div>
+            <p class="eyebrow">Live bakery dashboard</p>
+            <h1>Here’s what needs baking.</h1>
+            <p class="subtitle-line">Cookies • Treats • Sourdough • Jams</p>
+          </div>
         </div>
         <div class="goal-chip">
           <p class="small-label">Monthly Snack Goal</p>
@@ -65,7 +62,7 @@
       <section id="today" class="panel split-panel attention-panel">
         <div>
           <p class="eyebrow">Action queue</p>
-          <h3>Today needs attention</h3>
+          <h3>Caleb Queue</h3>
           <p class="muted">Orders, baking, pickups, shipping, and ingredients that can’t be missed.</p>
         </div>
         <div id="alerts" class="alert-list"></div>
@@ -96,6 +93,7 @@
                 <th>Items</th>
                 <th>Due</th>
                 <th>Total</th>
+                <th>Cost</th>
                 <th>Profit</th>
                 <th>Status</th>
               </tr>
@@ -132,7 +130,7 @@
             <p class="eyebrow">Profit by product</p>
             <h3>Recipe Costing</h3>
           </div>
-          <span class="pill success">Cost per cookie ready</span>
+          <span class="pill success">Google Sheet ingredient costs ready</span>
         </div>
         <div id="recipeCards" class="recipe-grid"></div>
       </section>
@@ -178,6 +176,7 @@
   </div>
 
   <script src="data/sample-data.js"></script>
-  <script src="src/app.js?v=4-website-vibe"></script>
+  <script src="data/config.js"></script>
+  <script src="src/app.js?v=5-compact-gsheet-backend"></script>
 </body>
 </html>

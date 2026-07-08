@@ -1,0 +1,12 @@
+Name,CostPerUnit,Unit,Stock,ReorderAt,ShoppingUnit
+Flour,0.12,cup,45,15,5 lb bag
+Sugar,0.18,cup,28,12,4 lb bag
+Brown Sugar,0.22,cup,10,8,2 lb bag
+Butter,1.15,cup,7,4,1 lb box
+Eggs,0.31,each,18,12,dozen
+Chocolate Chips,0.75,cup,8,4,bag
+Sprinkles,0.55,cup,2,2,jar
+Molasses,0.95,cup,2,1,bottle
+Jalapeños,1.65,lb,4,3,lb
+Apple Cider Vinegar,0.75,cup,8,3,bottle
+Jars + Lids,0.72,each,24,12,case

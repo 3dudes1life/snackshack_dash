@@ -1,6 +1,45 @@
 const money = value => Number(value || 0).toLocaleString(undefined, { style: "currency", currency: "USD" });
-const today = new Date("2026-07-08T09:00:00"); // Replace with new Date() when live.
+const today = new Date();
 let activeFilter = "all";
+
+function jsonp(url) {
+  return new Promise((resolve, reject) => {
+    const callbackName = `snackshackCallback_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const script = document.createElement("script");
+    window[callbackName] = data => {
+      resolve(data || {});
+      delete window[callbackName];
+      script.remove();
+    };
+    script.onerror = () => {
+      delete window[callbackName];
+      script.remove();
+      reject(new Error("Snack Shack backend JSONP failed"));
+    };
+    const joiner = url.includes("?") ? "&" : "?";
+    script.src = `${url}${joiner}callback=${callbackName}&t=${Date.now()}`;
+    document.body.appendChild(script);
+  });
+}
+
+async function loadBackendData() {
+  const apiUrl = window.SNACKSHACK_API_URL || "";
+  if (!apiUrl || apiUrl.includes("PASTE_GOOGLE_APPS_SCRIPT_URL_HERE")) return;
+
+  try {
+    const liveData = await jsonp(apiUrl);
+    if (liveData && !liveData.error) {
+      dashboardData = { ...dashboardData, ...liveData };
+      dashboardData.orders = liveData.orders || dashboardData.orders || [];
+      dashboardData.products = liveData.products || dashboardData.products || [];
+      dashboardData.ingredients = liveData.ingredients || dashboardData.ingredients || [];
+      dashboardData.customers = liveData.customers || dashboardData.customers || [];
+      dashboardData.goal = liveData.goal || dashboardData.goal;
+    }
+  } catch (error) {
+    console.warn("Using sample data because backend did not load:", error);
+  }
+}
 
 function ingredientCost(product) {
   return product.recipe.reduce((sum, line) => {
@@ -112,6 +151,7 @@ function renderOrders() {
         <td>${order.items.map(item => `${item.qty}× ${item.name}`).join("<br>")}</td>
         <td>${order.dueDate}<span>${daysUntil(order.dueDate)} day(s)</span></td>
         <td>${money(orderTotal(order))}</td>
+        <td>${money(orderCost(order))}</td>
         <td>${money(orderProfit(order))}</td>
         <td><span class="pill ${statusClass(order.status)}">${order.status}</span></td>
       </tr>
@@ -258,7 +298,8 @@ function bindFilters() {
   });
 }
 
-function init() {
+async function init() {
+  await loadBackendData();
   renderGoal();
   renderOverview();
   renderAlerts();

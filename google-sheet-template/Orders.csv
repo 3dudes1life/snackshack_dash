@@ -1,0 +1,3 @@
+OrderID,Platform,Customer,DueDate,PickupOrShip,Status,SourceUrl,Notes
+ETSY-1042,Etsy,Megan R.,2026-07-10,Ship,New,,Gift order. Include thank-you card.
+SQ-2201,Square,Tina M.,2026-07-08,Pickup 4:00 PM,Baking,,Porch pickup. Text when ready.

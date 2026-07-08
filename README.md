@@ -1,58 +1,47 @@
-# 🍪 C-Dawg's Snack Shack Command Center
+# C-Dawg's Snack Shack Command Center
 
-A ready-to-edit GitHub Pages dashboard for C-Dawg's Snack Shack.
+Compact GitHub Pages dashboard for Caleb's bakery workflow.
 
-Built for:
+## What changed in this version
 
-- Square + Etsy order visibility
-- Caleb's daily baking queue
-- Recipe and ingredient costing
-- Profit per product and per order
-- Pickup/shipping tracking
-- Ingredient shopping forecasts
-- Cottage food production workflow
+- Removed the giant hero/header waste of space.
+- Dashboard now opens directly to Caleb's action view.
+- Kept the live website vibe: cream background, teal headings, coral buttons, faded palm silhouettes.
+- Added Google Sheet ingredient-cost backend starter.
+- Added cost column in the order hub.
+- Built live-data support through Google Apps Script JSONP.
 
-## Quick Start
+## Files
 
-1. Upload this folder to a new GitHub repo, for example:
-   `3dudes1life/cdawgs-snackshack-commandcenter`
-2. Turn on GitHub Pages from the repo settings.
-3. Open `data/sample-data.js` and replace the sample products/orders/ingredients.
-4. When ready for live data, connect Square + Etsy through a backend bridge.
+- `index.html` — dashboard page
+- `src/styles-compact.css` — compact website-vibe styling
+- `src/app.js` — dashboard logic and optional live backend loader
+- `data/sample-data.js` — demo data
+- `data/config.js` — paste your Google Apps Script web app URL here
+- `backend/google-apps-script/Code.gs` — Apps Script backend
+- `google-sheet-template/*.csv` — tabs to create/import into Google Sheets
 
-## Local Preview
+## Fast setup
 
-```bash
-npm run start
+1. Upload these files to the GitHub Pages repo.
+2. Confirm the page works with sample data.
+3. Create a Google Sheet with tabs matching the CSV files in `google-sheet-template`.
+4. Open Apps Script and paste `backend/google-apps-script/Code.gs`.
+5. Put your Google Sheet ID into `SPREADSHEET_ID`.
+6. Deploy as Web App.
+7. Paste the Web App URL into `data/config.js`:
+
+```js
+window.SNACKSHACK_API_URL = "https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec";
 ```
 
-Then open:
+## Ingredient costing
 
-```text
-http://localhost:5173
-```
+The dashboard calculates product and order profit from:
 
-## Data Files
+- Products tab: sale price, yield, packaging cost
+- Ingredients tab: cost per unit, stock, reorder level
+- Recipes tab: ingredient amount per product
+- Orders + OrderItems tabs: open orders and quantities
 
-- `data/sample-data.js` — current demo data used by dashboard
-- `docs/API_SETUP.md` — Square + Etsy connection plan
-- `docs/DATA_MODEL.md` — fields needed for orders, products, recipes, ingredients
-- `docs/CALEB_WORKFLOW.md` — recommended daily workflow
-
-## Live API Strategy
-
-This static dashboard can run safely on GitHub Pages if secret API keys are not stored in the frontend.
-
-Recommended flow:
-
-Square/Etsy APIs → Google Apps Script or serverless function → sanitized JSON → dashboard
-
-Do not put Square or Etsy tokens directly inside frontend JavaScript.
-
-
-## No-Dots Build
-This package intentionally removes all sprinkle and dot background layers. The dashboard now loads `src/styles-no-dots.css?v=3-no-dots` so browsers do not reuse the older cached `src/styles.css`.
-
-
-## Website Vibe Build
-This version is restyled to match the live C-Dawg's Snack Shack site: cream background, faded palm silhouettes, teal headings, coral shop-style buttons, rounded treat cards, and no dot/sprinkle background. It loads `src/styles-website-vibe.css?v=4-website-vibe-no-dots` to bypass cached dashboard CSS.
+This lets Caleb update sugar/flour/butter costs in Google Sheets and the dashboard recalculates profit without touching code.
