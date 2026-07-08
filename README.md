@@ -155,3 +155,32 @@ Fixes:
   - Blackberry Jam
   - typo/abbreviation variants
 - Added ingredient-signature fallback matching when names are messy.
+
+
+## v22 True Separated Batches
+
+This fixes the sync issue for real.
+
+### Separate localStorage keys
+- `cdawgKitchenBatchState`
+- `cdawgProductionBatchState`
+
+### Kitchen Recipe Workspace
+- Uses `kitchenBatches(recipe)`.
+- Minimum batch is 1.
+- Only scales the recipe currently being cooked.
+- Does not affect Production Planner.
+- Does not affect Smart Prep.
+
+### Production Planner
+- Uses `selectedBatches(recipe)` from production state only.
+- Minimum batch is 0.
+- Drives:
+  - production cost
+  - production yield
+  - projected revenue
+  - projected profit
+  - Ingredients Needed for Production Planner Batches
+
+### Important
+Old shared `cdawgBatchState` is migrated into Production Planner only, never Kitchen.

@@ -589,3 +589,39 @@ details p span{text-align:right;color:var(--muted)}
 @media(max-width:520px){
   .planner-actions{display:grid}
 }
+
+
+/* v22 true separated batches */
+.batch-control.kitchen-control {
+  border-color: rgba(23,98,114,.24);
+  background: linear-gradient(135deg,#fff,#ecf7f2);
+}
+.batch-control.production-control {
+  border-color: rgba(223,92,89,.22);
+  background: linear-gradient(135deg,#fff,#fff8ea);
+}
+.batch-control.kitchen-control button {
+  background: var(--teal);
+}
+.batch-control.production-control button {
+  background: var(--coral);
+}
+.kitchen-yield-card {
+  background: linear-gradient(135deg, #fff6e6, #ecf7f2);
+}
+.kitchen-yield-card small::after {
+  content: " • kitchen only";
+  color: var(--teal);
+  font-weight: 900;
+}
+.planner-actions span::after {
+  content: " Kitchen batches do not affect this page.";
+  color: var(--teal);
+  font-weight: 900;
+}
+.planner-actions button:nth-child(3) {
+  background: var(--teal);
+}
+.recipe-row small {
+  line-height: 1.25;
+}
