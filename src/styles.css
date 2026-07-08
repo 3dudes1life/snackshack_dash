@@ -1026,3 +1026,108 @@ nav img {
   color: var(--coral);
   font-weight: 900;
 }
+
+
+/* v29 Brain 7.0 + real uploaded logo */
+.brand img,
+.brand-logo {
+  width: 48px !important;
+  height: 48px !important;
+  border-radius: 999px !important;
+  object-fit: cover !important;
+  display: block !important;
+  box-shadow: 0 10px 24px rgba(120, 80, 40, .18);
+}
+.brand {
+  gap: 12px !important;
+}
+.brain-panel {
+  border: 1px solid rgba(223,92,89,.18);
+  background:
+    radial-gradient(circle at 92% 12%, rgba(223,92,89,.16), transparent 20rem),
+    radial-gradient(circle at 8% 0%, rgba(23,107,118,.14), transparent 22rem),
+    linear-gradient(135deg,#fffdf8,#f4fbf7);
+}
+.priority-list {
+  margin: 14px 0;
+  background: rgba(255,255,255,.72);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 14px;
+  box-shadow: var(--soft);
+}
+.priority-head {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.priority-head h3 {
+  margin: 0;
+  color: var(--deep);
+  font-family: "Baloo 2", Inter, sans-serif;
+  font-size: 1.55rem;
+  line-height: 1;
+}
+.priority-head button,
+.apply-demand-btn {
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 14px;
+  background: var(--coral);
+  color: #fff;
+  font-weight: 900;
+  box-shadow: 0 12px 24px rgba(223,92,89,.22);
+  cursor: pointer;
+}
+.apply-demand-btn {
+  width: 100%;
+  margin-bottom: 8px;
+  background: var(--teal);
+}
+.priority-grid {
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
+}
+.priority-grid article {
+  border-radius: 18px;
+  padding: 13px;
+  border: 1px solid var(--line);
+}
+.priority-grid article.hot { background: #fff0ec; }
+.priority-grid article.success { background: #eaf8f1; }
+.priority-grid article.warn { background: #fff4dc; }
+.priority-grid article.calm { background: #ffffff; }
+.priority-grid span {
+  display:block;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  font-size: .68rem;
+  font-weight: 900;
+}
+.priority-grid b {
+  display:block;
+  color: var(--deep);
+  margin: 5px 0;
+  line-height: 1.1;
+}
+.priority-grid small {
+  display:block;
+  color: var(--muted);
+  line-height: 1.35;
+}
+.demand-card strong {
+  white-space: nowrap;
+}
+@media(max-width:760px){
+  .priority-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .priority-head button {
+    width: 100%;
+  }
+}

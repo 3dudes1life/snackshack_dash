@@ -16,7 +16,7 @@ function titleWords(value){
     .filter(word=>![
       "cookie","cookies","treat","treats","soft","chewy","bakery","style",
       "and","the","a","an","of","with","one","batch","batches","recipe",
-      "photo","google","sheet","cost","costs","pan","9x12","jumbo"
+      "photo","google","sheet","cost","costs","pan","9x12","jumbo","single","pack","dozen","dozens","twelve","six","half","xl","medium","mini","large","extra","available","made","fresh","order","orders","pickup","delivery"
     ].includes(word));
 }
 function smartKey(value){return titleWords(value).join("");}
@@ -687,7 +687,7 @@ function renderCleanup(){
   ].filter(Boolean).map(x=>`<div class="list-row"><div><strong>${x[0]}</strong><span>${x[2]}</span></div><b>${x[1]}</b></div>`).join("");
 }
 
-/* ---------------- Brain 6.0 Order Hub ---------------- */
+/* ---------------- Brain 7.0 Order Hub ---------------- */
 
 function orderStatus(order){
   return String(order.status || order.state || "OPEN").toUpperCase();
@@ -900,22 +900,134 @@ function renderOrderHub(){
 
   const demand=document.getElementById("orderDemand");
   if(demand){
-    demand.innerHTML=summary.demand.length ? summary.demand.map(row=>{
-      const yieldOne=row.recipe ? yieldPerSingleBatch(row.recipe) : 0;
-      const batches=yieldOne ? Math.ceil(row.quantity/yieldOne) : 0;
-      return `
+    const rows=productionDemandBatches();
+    demand.innerHTML=rows.length ? `
+      <button type="button" class="apply-demand-btn" id="applyDemandButton">Send demand to Production Planner</button>
+      ${rows.map(row=>`
         <article class="demand-card ${row.unmatched?"unmatched":""}">
           <div>
             <b>${row.name}</b>
             <span>${row.quantity} ordered across ${row.orderCount} order${row.orderCount===1?"":"s"}</span>
           </div>
-          <strong>${row.unmatched ? "Match needed" : `${batches} batch${batches===1?"":"es"}`}</strong>
-          <small>${row.unmatched ? "Add alias or matching recipe/product name" : `Yield ${Math.round(yieldOne)} each batch`}</small>
-        </article>`;
-    }).join("") : `<div class="empty-state">No production demand yet.</div>`;
+          <strong>${row.unmatched ? "Match needed" : `${row.batches} batch${row.batches===1?"":"es"}`}</strong>
+          <small>${row.unmatched ? "Add alias or matching recipe/product name" : `Yield ${Math.round(row.yieldOne)} each batch · est cost ${money(row.recipeCost)}`}</small>
+        </article>`).join("")}` : `<div class="empty-state">No production demand yet.</div>`;
+    document.getElementById("applyDemandButton")?.addEventListener("click",applyDemandToProductionPlanner);
   }
 }
 
+
+
+function productionDemandBatches(){
+  return buildOrderDemand().map(row=>{
+    const yieldOne=row.recipe ? yieldPerSingleBatch(row.recipe) : 0;
+    const batches=yieldOne ? Math.ceil(row.quantity/yieldOne) : 0;
+    const recipeCost=row.recipe ? singleBatchCost(row.recipe.costProduct)*batches : 0;
+    return {...row,yieldOne,batches,recipeCost};
+  });
+}
+function demandProductionCost(){
+  return productionDemandBatches().reduce((s,row)=>s+number(row.recipeCost),0);
+}
+function openSquareValue(){
+  const summary=squareOrderSummary();
+  return summary.openRevenue + summary.openInvoiceRevenue;
+}
+function orderHubProfitEstimate(){
+  return openSquareValue() - demandProductionCost();
+}
+function marginFromProfit(profit,revenue){
+  return revenue>0 ? (profit/revenue)*100 : 0;
+}
+function buildPriorityItems(){
+  const summary=squareOrderSummary();
+  const demand=productionDemandBatches();
+  const unmatched=demand.filter(row=>row.unmatched);
+  const matched=demand.filter(row=>!row.unmatched && row.batches>0);
+  const revenue=openSquareValue();
+  const cost=demandProductionCost();
+  const profit=revenue-cost;
+  const margin=marginFromProfit(profit,revenue);
+  const ingredients=buildDemandIngredientTotals().slice(0,12);
+
+  const items=[];
+  if(summary.combinedOpen.length){
+    items.push({
+      label:"Square Work",
+      title:`${summary.combinedOpen.length} open order/invoice item${summary.combinedOpen.length===1?"":"s"}`,
+      detail:`${money(revenue)} open value waiting for Caleb.`,
+      tone:"hot"
+    });
+  } else {
+    items.push({
+      label:"Square Work",
+      title:"No open Square work",
+      detail:"Order Hub is connected and waiting for the next order/invoice.",
+      tone:"calm"
+    });
+  }
+  if(matched.length){
+    items.push({
+      label:"Bake First",
+      title:matched.slice(0,4).map(row=>`${row.batches}× ${row.name}`).join(" · "),
+      detail:`Demand engine matched ${matched.length} recipe group${matched.length===1?"":"s"}.`,
+      tone:"success"
+    });
+  }
+  if(unmatched.length){
+    items.push({
+      label:"Needs Match",
+      title:unmatched.slice(0,3).map(row=>row.name).join(" · "),
+      detail:"Add recipe aliases or align Square names so Brain can batch these.",
+      tone:"warn"
+    });
+  }
+  if(revenue>0){
+    items.push({
+      label:"Order Profit",
+      title:`${money(profit)} est. profit · ${percent(margin)} margin`,
+      detail:`Based on ${money(cost)} estimated recipe production cost.`,
+      tone: margin>=65 ? "success" : margin>=45 ? "calm" : "warn"
+    });
+  }
+  if(ingredients.length){
+    items.push({
+      label:"Prep Pull",
+      title:ingredients.slice(0,5).map(i=>`${i.amount.toFixed(1).replace(/\.0$/,"")} ${i.unit} ${i.name}`).join(" · "),
+      detail:"Ingredient prep based on live Square demand only.",
+      tone:"calm"
+    });
+  }
+  return items;
+}
+function buildDemandIngredientTotals(){
+  const totals={};
+  productionDemandBatches().forEach(row=>{
+    if(row.unmatched || !row.recipe || row.batches<=0) return;
+    const p=row.recipe.costProduct;
+    if(!p) return;
+    const sheetBatch=sheetBatches(p);
+    const multiplier=row.batches/sheetBatch;
+    (p.recipe||[]).forEach(line=>{
+      const name=line.ingredient||"Unknown";
+      const unit=line.unit||"";
+      const key=`${name}__${unit}`;
+      if(!totals[key]) totals[key]={name,unit,amount:0,cost:0};
+      totals[key].amount += number(line.amount)*multiplier;
+      totals[key].cost += number(line.ingredientCost)*multiplier;
+    });
+  });
+  return Object.values(totals).filter(x=>x.amount>0).sort((a,b)=>b.cost-a.cost);
+}
+function applyDemandToProductionPlanner(){
+  const all=mergedRecipes();
+  all.forEach(r=>productionBatchState[r.key]=0);
+  productionDemandBatches().forEach(row=>{
+    if(row.recipe && row.batches>0) productionBatchState[row.recipe.key]=row.batches;
+  });
+  saveProductionBatchState();
+  renderAll();
+}
 
 function percent(value){
   if(!isFinite(value)) return "0%";
@@ -966,25 +1078,36 @@ function buildBrain(){
   })[0];
 
   const recs=[];
+  const demandRows=productionDemandBatches();
+  const demandCost=demandProductionCost();
+  const orderValue=openSquareValue();
+  const orderProfit=orderHubProfitEstimate();
+  const orderMargin=marginFromProfit(orderProfit,orderValue);
   if(orderSummary.combinedOpen.length){
     recs.push({
       type:"success",
-      title:"Open Square work",
-      text:`${orderSummary.open.length} order${orderSummary.open.length===1?"":"s"} and ${orderSummary.openInvoices.length} invoice${orderSummary.openInvoices.length===1?"":"s"} worth ${money(orderSummary.openRevenue + orderSummary.openInvoiceRevenue)} are waiting in Order Hub.`
+      title:"Today’s Square action",
+      text:`${orderSummary.open.length} order${orderSummary.open.length===1?"":"s"} and ${orderSummary.openInvoices.length} invoice${orderSummary.openInvoices.length===1?"":"s"} are open. Estimated order profit is ${money(orderProfit)} at ${percent(orderMargin)} margin.`
     });
   } else {
     recs.push({
       type:"money",
       title:"Order Hub ready",
-      text:"No open Square orders right now. When pending orders appear, they will show above recipes and feed production demand."
+      text:"No open Square orders right now. When pending orders appear, Brain 7.0 will turn them into production batches and prep needs."
     });
   }
-  if(orderSummary.demand.length){
-    const topDemand=orderSummary.demand[0];
+  if(demandRows.length){
+    const matched=demandRows.filter(r=>!r.unmatched);
+    const topDemand=demandRows[0];
     recs.push({
       type: topDemand.unmatched ? "warning" : "success",
-      title:"Top order demand",
-      text: topDemand.unmatched ? `${topDemand.name} needs a recipe match.` : `${topDemand.name} is the top open-order demand at ${topDemand.quantity} item${topDemand.quantity===1?"":"s"}.`
+      title:"Production demand",
+      text: topDemand.unmatched ? `${topDemand.name} needs a recipe match.` : `${matched.slice(0,4).map(r=>`${r.batches}× ${r.name}`).join(", ")}.`
+    });
+    recs.push({
+      type:"money",
+      title:"Demand prep cost",
+      text:`Live Square demand needs about ${money(demandCost)} in ingredients before packaging/labor.`
     });
   }
   if(!planned.length){
@@ -1025,7 +1148,7 @@ function buildBrain(){
   if(bestActive){
     recs.push({type:"success",title:"Best profit driver",text:`${bestActive.name} currently projects ${money(estimatedProfit(bestActive))} profit in active pricing mode.`});
   }
-  recs.push({type:"success",title:"Square-safe pricing logic",text:"Brain 6.0 keeps Corporate DZ and Square Retail pricing separate, compares both channels, and stays ready for live Square orders without overwriting your pricing strategy."});
+  recs.push({type:"success",title:"Square-safe pricing logic",text:"Brain 7.0 keeps Corporate DZ and Square Retail pricing separate, compares both channels, and stays ready for live Square orders without overwriting your pricing strategy."});
 
   return {
     all, planned, productionCost, activeRevenue, activeProfit,
@@ -1038,8 +1161,10 @@ function buildBrain(){
 function renderBrain(){
   const brain=buildBrain();
   document.getElementById("brainSummary").innerHTML=`
-    <article><span>Open Square</span><strong>${squareOrderSummary().combinedOpen.length}</strong><small>${money(squareOrderSummary().openRevenue + squareOrderSummary().openInvoiceRevenue)} pending</small></article>
-    <article><span>Cost</span><strong>${money(brain.productionCost)}</strong><small>planner batches</small></article>
+    <article><span>Open Square</span><strong>${squareOrderSummary().combinedOpen.length}</strong><small>${money(openSquareValue())} pending</small></article>
+    <article><span>Demand Cost</span><strong>${money(demandProductionCost())}</strong><small>from Square demand</small></article>
+    <article><span>Demand Profit</span><strong>${money(orderHubProfitEstimate())}</strong><small>${percent(marginFromProfit(orderHubProfitEstimate(),openSquareValue()))} margin</small></article>
+    <article><span>Planner Cost</span><strong>${money(brain.productionCost)}</strong><small>manual planner batches</small></article>
     <article><span>Active Revenue</span><strong>${money(brain.activeRevenue)}</strong><small>selected pricing modes</small></article>
     <article><span>Active Profit</span><strong>${money(brain.activeProfit)}</strong><small>projected net</small></article>
     <article><span>Active Margin</span><strong>${percent(brain.activeMargin)}</strong><small>profit ÷ revenue</small></article>
@@ -1048,6 +1173,28 @@ function renderBrain(){
     <article><span>Square Each Profit</span><strong>${money(brain.squareEachProfit)}</strong><small>${percent(brain.squareEachMargin)} margin</small></article>
     <article><span>Profit / Dozen</span><strong>${money(brain.avgProfitPerDozen)}</strong><small>active pricing</small></article>
   `;
+  const priority=document.getElementById("priorityList");
+  if(priority){
+    priority.innerHTML=`
+      <div class="priority-head">
+        <div>
+          <p class="eyebrow">Brain 7.0</p>
+          <h3>Caleb’s Today List</h3>
+        </div>
+        <button type="button" id="priorityApplyDemand">Send Square demand to planner</button>
+      </div>
+      <div class="priority-grid">
+        ${buildPriorityItems().map(item=>`
+          <article class="${item.tone}">
+            <span>${item.label}</span>
+            <b>${item.title}</b>
+            <small>${item.detail}</small>
+          </article>
+        `).join("")}
+      </div>
+    `;
+    document.getElementById("priorityApplyDemand")?.addEventListener("click",applyDemandToProductionPlanner);
+  }
   document.getElementById("brainCards").innerHTML=brain.recs.map(item=>`
     <article class="brain-card ${item.type}">
       <p>${item.title}</p>
@@ -1094,6 +1241,6 @@ async function init(){
   document.getElementById("recipeSearch")?.addEventListener("input",e=>renderRecipeList(e.target.value));
   document.getElementById("refreshButton")?.addEventListener("click",()=>window.location.reload());
   document.getElementById("printTodayButton")?.addEventListener("click",()=>window.print());
-  document.getElementById("brainButton")?.addEventListener("click",()=>renderBrain());
+  document.getElementById("brainButton")?.addEventListener("click",()=>{renderBrain();renderOrderHub();});
 }
 init();

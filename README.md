@@ -323,3 +323,30 @@ If Apps Script does not ask for permissions:
 - Save.
 - Select `authorizeSquareFetch_` from the function dropdown.
 - Click Run from inside Apps Script, not from the web app URL.
+
+
+## v29 Brain 7.0
+
+Adds the real uploaded C-Dawg logo and upgrades Brain into a daily action brain.
+
+### Logo
+- Uses the uploaded `CDawgs SnackShack copy.jpeg`.
+- Saves it as:
+  - `assets/cdawg-logo.png`
+  - `assets/favicon.png`
+  - `assets/apple-touch-icon.png`
+- Fixes the broken double-quote logo path from the live GitHub file.
+
+### Brain 7.0
+- Adds Caleb’s Today List.
+- Calculates open Square value from orders + invoices.
+- Calculates estimated production cost from live Square demand.
+- Calculates estimated order profit + margin from live Square demand.
+- Shows top bake-first items.
+- Shows unmatched Square items that need alias cleanup.
+- Builds Smart Prep pull list from live Square demand.
+- Adds “Send Square demand to Production Planner” button.
+- Keeps manual Production Planner separate until Caleb chooses to send demand over.
+- Keeps Kitchen Recipe Workspace batch counts separate.
+
+Upload this ZIP over the GitHub Pages files.
