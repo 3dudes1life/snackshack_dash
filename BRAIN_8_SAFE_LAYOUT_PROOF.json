@@ -1,0 +1,16 @@
+{
+  "version": "v41-brain-8-safe-layout",
+  "base_zip": "/mnt/data/cdawgs-snackshack-commandcenter-brain-7-real-uploaded-logo.zip",
+  "important": "rebuilt from last styled working layout; no base64 favicon; existing CSS/script links preserved",
+  "features": [
+    "Brain 8.0 labels",
+    "live sync panel",
+    "cache-busted Apps Script calls",
+    "auto-refresh every 60 seconds",
+    "manual refresh calls live refresh",
+    "ERP profit health cards",
+    "production queue cards",
+    "normal favicon files",
+    "real uploaded logo file"
+  ]
+}

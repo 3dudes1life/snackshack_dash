@@ -1,6 +1,5 @@
-const money=v=>Number(v||0).toLocaleString(undefined,{style:"currency",currency:"USD"});
-const number=v=>Number(v||0)||0;
-const norm=v=>String(v||"").toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]+/g,"");
+const money=v=41-brain-8-safe-layout"currency",currency:"USD"});
+const number=v=41-brain-8-safe-layout"").toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]+/g,"");
 
 function titleWords(value){
   return String(value||"").toLowerCase()
@@ -49,53 +48,52 @@ const MANUAL_MATCHES={
 
 
 let lastLiveSyncAt = null;
-let nextSyncCountdown = 60;
 let liveSyncTimer = null;
-let countdownTimer = null;
-
+let syncCountdownTimer = null;
+let nextSyncCountdown = 60;
 function cacheBustUrl(url){
-  const sep = url.includes("?") ? "&" : "?";
+  const sep = String(url).includes("?") ? "&" : "?";
   return `${url}${sep}_=${Date.now()}`;
 }
-function setSyncStatus(status, detail){
+function updateSyncPanel(status="LIVE", detail="Fresh Square + Google Sheets data loaded"){
   const statusEl=document.getElementById("syncStatus");
   const detailEl=document.getElementById("syncDetail");
   const lastEl=document.getElementById("lastSyncTime");
   const nextEl=document.getElementById("nextSyncTime");
   if(statusEl) statusEl.textContent=status;
-  if(detailEl) detailEl.textContent=detail || "";
+  if(detailEl) detailEl.textContent=detail;
   if(lastEl) lastEl.textContent=lastLiveSyncAt ? lastLiveSyncAt.toLocaleTimeString([], {hour:"numeric", minute:"2-digit", second:"2-digit"}) : "—";
   if(nextEl) nextEl.textContent=`${nextSyncCountdown}s`;
 }
 function startSyncCountdown(){
-  clearInterval(countdownTimer);
+  clearInterval(syncCountdownTimer);
   nextSyncCountdown=60;
-  setSyncStatus("LIVE", "Fresh Square + Google Sheets data loaded");
-  countdownTimer=setInterval(()=>{
+  updateSyncPanel("LIVE","Fresh Square + Google Sheets data loaded");
+  syncCountdownTimer=setInterval(()=>{
     nextSyncCountdown=Math.max(0,nextSyncCountdown-1);
     const nextEl=document.getElementById("nextSyncTime");
     if(nextEl) nextEl.textContent=`${nextSyncCountdown}s`;
   },1000);
 }
-async function forceLiveRefresh(){
-  setSyncStatus("Syncing…", "Pulling fresh Square + Google Sheets data");
+async function refreshLiveData(){
+  updateSyncPanel("Syncing…","Pulling Square orders, invoices, catalog, and Google Sheets costs");
   try{
-    if(typeof loadBackendData === "function"){
-      await loadBackendData(true);
-    }
+    await loadBackendData();
     lastLiveSyncAt=new Date();
-    if(typeof renderAll === "function") renderAll();
+    renderStatus(true);
+    renderAll();
     startSyncCountdown();
   }catch(err){
     console.error(err);
-    setSyncStatus("Offline", String(err && err.message ? err.message : err));
+    updateSyncPanel("Offline", String(err && err.message ? err.message : err));
   }
 }
 function startAutoRefresh(){
   clearInterval(liveSyncTimer);
-  liveSyncTimer=setInterval(()=>forceLiveRefresh(),60000);
+  liveSyncTimer=setInterval(refreshLiveData,60000);
   startSyncCountdown();
 }
+
 let dashboardData={products:[],ingredients:[],orders:[],customers:[],squareInvoices:[],squareCatalog:[],squareInventory:[],squareStatus:'not_connected',squareMessage:''};
 const bakedRecipes=window.CDAWG_RECIPE_LIBRARY||[];
 let selectedRecipeKey="";
@@ -204,18 +202,7 @@ function revenueForMode(r,mode){
 }
 function profitForMode(r,mode){return revenueForMode(r,mode)-batchCostForRecipe(r);}
 function marginForMode(r,mode){
-  const rev=revenueForMode(r,mode);
-  return rev>0 ? (profitForMode(r,mode)/rev)*100 : 0;
-}
-function suggestedDzPriceForTarget(r,targetMargin=null){
-  const target=(targetMargin ?? getTargetMargin(r))/100;
-  const costPerDz=costDozen(r);
-  if(costPerDz<=0 || target>=.98) return 0;
-  return costPerDz/(1-target);
-}
-function bestPricingChannel(r){
-  const options=[
-    ["Corporate DZ", marginForMode(r,"corporate"), revenueForMode(r,"corporate"), profitForMode(r,"corporate")],
+  const rev=41-brain-8-safe-layout"Corporate DZ", marginForMode(r,"corporate"), revenueForMode(r,"corporate"), profitForMode(r,"corporate")],
     ["Square DZ", marginForMode(r,"square"), revenueForMode(r,"square"), profitForMode(r,"square")],
     ["Square Each", marginForMode(r,"squareRetailEach"), revenueForMode(r,"squareRetailEach"), profitForMode(r,"squareRetailEach")]
   ].filter(x=>x[2]>0);
@@ -569,7 +556,6 @@ function renderRecipeList(filter=""){
       renderRecipeList(document.getElementById("recipeSearch").value);
       renderRecipeDetail();
       bindControls();
-  if(lastLiveSyncAt) setSyncStatus('LIVE','Fresh Square + Google Sheets data loaded');
     });
   });
 }
@@ -659,7 +645,7 @@ function renderPricing(){
   const planned=all.filter(r=>selectedBatches(r)>0);
   const orderSummary=squareOrderSummary();
   const rows=(planned.length?planned:all).map(r=>{
-    const corpRev=revenueForMode(r,"corporate"), sqRev=revenueForMode(r,"square"), eachRev=revenueForMode(r,"squareRetailEach");
+    const corpRev=41-brain-8-safe-layout"corporate"), sqRev=41-brain-8-safe-layout"square"), eachRev=41-brain-8-safe-layout"squareRetailEach");
     const target=getTargetMargin(r);
     const suggested=suggestedDzPriceForTarget(r,target);
     return `
@@ -968,65 +954,6 @@ function renderOrderHub(){
 
 
 
-
-function buildERPQueue(){
-  const demand=productionDemandBatches();
-  const ingredients=buildDemandIngredientTotals ? buildDemandIngredientTotals() : [];
-  const openDocs=combinedOpenSquareDocuments ? combinedOpenSquareDocuments() : [];
-  const revenue=openSquareValue ? openSquareValue() : 0;
-  const cost=demandProductionCost ? demandProductionCost() : 0;
-  const profit=orderHubProfitEstimate ? orderHubProfitEstimate() : 0;
-  const margin=marginFromProfit ? marginFromProfit(profit,revenue) : 0;
-  return {demand,ingredients,openDocs,revenue,cost,profit,margin};
-}
-function buildERPBrainCards(){
-  const erp=buildERPQueue();
-  const cards=[];
-  cards.push({
-    type:"success",
-    title:"ERP live sync",
-    text:`Square + Google Sheets refresh on load and every 60 seconds. Last sync: ${lastLiveSyncAt ? lastLiveSyncAt.toLocaleTimeString([], {hour:"numeric",minute:"2-digit",second:"2-digit"}) : "loading"}.`
-  });
-  if(erp.openDocs.length){
-    cards.push({
-      type:"money",
-      title:"Cash on deck",
-      text:`${erp.openDocs.length} open Square order/invoice document${erp.openDocs.length===1?"":"s"} totaling ${money(erp.revenue)}.`
-    });
-  }
-  if(erp.demand.length){
-    const ready=erp.demand.filter(x=>!x.unmatched);
-    const missing=erp.demand.filter(x=>x.unmatched);
-    cards.push({
-      type: missing.length ? "warning" : "success",
-      title:"Production queue",
-      text: ready.length ? ready.map(x=>`${x.batches}× ${x.name}`).join(", ") : "No matched production yet."
-    });
-    if(missing.length){
-      cards.push({
-        type:"warning",
-        title:"Name cleanup",
-        text:`${missing.map(x=>x.name).join(", ")} need Square/recipe alias matching.`
-      });
-    }
-  }
-  if(erp.ingredients.length){
-    cards.push({
-      type:"success",
-      title:"Smart shopping/prep list",
-      text:erp.ingredients.map(i=>`${i.amount.toFixed(1).replace(/\.0$/,"")} ${i.unit} ${i.name}`).join(", ")
-    });
-  }
-  if(erp.revenue>0){
-    cards.push({
-      type:erp.margin>=65?"success":erp.margin>=45?"money":"warning",
-      title:"Profit health",
-      text:`Estimated order profit is ${money(erp.profit)} on ${money(erp.cost)} production cost, about ${percent(erp.margin)} margin.`
-    });
-  }
-  return cards;
-}
-
 function productionDemandBatches(){
   return buildOrderDemand().map(row=>{
     const yieldOne=row.recipe ? yieldPerSingleBatch(row.recipe) : 0;
@@ -1142,6 +1069,52 @@ function percent(value){
   if(!isFinite(value)) return "0%";
   return `${value.toFixed(1).replace(/\.0$/,"")}%`;
 }
+
+function getERPValue(){
+  const summary = typeof squareOrderSummary === "function" ? squareOrderSummary() : {openRevenue:0,openInvoiceRevenue:0,combinedOpen:[],demand:[]};
+  const revenue = (summary.openRevenue||0) + (summary.openInvoiceRevenue||0);
+  const demandRows = typeof productionDemandBatches === "function" ? productionDemandBatches() : [];
+  const cost = typeof demandProductionCost === "function" ? demandProductionCost() : 0;
+  const profit = revenue - cost;
+  const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
+  return {summary,revenue,demandRows,cost,profit,margin};
+}
+function buildERPBrainCards(){
+  const erp=getERPValue();
+  const cards=[];
+  cards.push({
+    type:"success",
+    title:"Brain 8.0 live sync",
+    text:`Auto-refresh is on. Last sync: ${lastLiveSyncAt ? lastLiveSyncAt.toLocaleTimeString([], {hour:"numeric",minute:"2-digit",second:"2-digit"}) : "loading"}.`
+  });
+  if(erp.revenue>0){
+    cards.push({
+      type:erp.margin>=65?"success":erp.margin>=45?"money":"warning",
+      title:"ERP profit health",
+      text:`Open Square value is ${money(erp.revenue)}. Estimated demand cost is ${money(erp.cost)}, leaving ${money(erp.profit)} profit at ${percent(erp.margin)} margin.`
+    });
+  }
+  if(erp.demandRows.length){
+    const matched=erp.demandRows.filter(r=>!r.unmatched);
+    const unmatched=erp.demandRows.filter(r=>r.unmatched);
+    if(matched.length){
+      cards.push({
+        type:"success",
+        title:"Production queue",
+        text:matched.map(r=>`${r.batches}× ${r.name}`).join(", ")
+      });
+    }
+    if(unmatched.length){
+      cards.push({
+        type:"warning",
+        title:"Square name cleanup",
+        text:`${unmatched.map(r=>r.name).join(", ")} need recipe aliases.`
+      });
+    }
+  }
+  return cards;
+}
+
 function buildBrain(){
   const all=mergedRecipes();
   const planned=all.filter(r=>selectedBatches(r)>0);
@@ -1167,34 +1140,7 @@ function buildBrain(){
   const ingredientTotals=buildIngredientTotals().slice(0,18);
 
   const lowMargin=planned.filter(r=>{
-    const rev=estimatedRevenue(r);
-    const margin=rev>0?(estimatedProfit(r)/rev)*100:0;
-    return rev>0 && margin<getTargetMargin(r);
-  }).sort((a,b)=>{
-    const ma=estimatedRevenue(a)>0?(estimatedProfit(a)/estimatedRevenue(a))*100:0;
-    const mb=estimatedRevenue(b)>0?(estimatedProfit(b)/estimatedRevenue(b))*100:0;
-    return ma-mb;
-  });
-  const underpriced=planned.filter(r=> {
-    const suggested=suggestedDzPriceForTarget(r,getTargetMargin(r));
-    return suggested>0 && getCorporateDzPrice(r)>0 && getCorporateDzPrice(r)<suggested;
-  });
-  const bestActive=[...planned].filter(r=>estimatedRevenue(r)>0).sort((a,b)=>estimatedProfit(b)-estimatedProfit(a))[0];
-  const bestMargin=[...planned].filter(r=>estimatedRevenue(r)>0).sort((a,b)=>{
-    const ma=(estimatedProfit(a)/estimatedRevenue(a))*100;
-    const mb=(estimatedProfit(b)/estimatedRevenue(b))*100;
-    return mb-ma;
-  })[0];
-
-  const recs=[];
-  const demandRows=productionDemandBatches();
-  const demandCost=demandProductionCost();
-  const orderValue=openSquareValue();
-  const orderProfit=orderHubProfitEstimate();
-  const orderMargin=marginFromProfit(orderProfit,orderValue);
-  if(orderSummary.combinedOpen.length){
-    recs.push({
-      type:"success",
+    const rev=41-brain-8-safe-layout"success",
       title:"Today’s Square action",
       text:`${orderSummary.open.length} order${orderSummary.open.length===1?"":"s"} and ${orderSummary.openInvoices.length} invoice${orderSummary.openInvoices.length===1?"":"s"} are open. Estimated order profit is ${money(orderProfit)} at ${percent(orderMargin)} margin.`
     });
@@ -1258,6 +1204,8 @@ function buildBrain(){
     recs.push({type:"success",title:"Best profit driver",text:`${bestActive.name} currently projects ${money(estimatedProfit(bestActive))} profit in active pricing mode.`});
   }
   recs.push({type:"success",title:"Square-safe pricing logic",text:"Brain 8.0 keeps Corporate DZ and Square Retail pricing separate, compares both channels, and stays ready for live Square orders without overwriting your pricing strategy."});
+
+  recs.unshift(...buildERPBrainCards());
 
   return {
     all, planned, productionCost, activeRevenue, activeProfit,
@@ -1348,21 +1296,9 @@ async function init(){
   renderStatus(live,msg);
   renderAll();
   document.getElementById("recipeSearch")?.addEventListener("input",e=>renderRecipeList(e.target.value));
-  document.getElementById("refreshButton")?.addEventListener("click",()=>window.forceLiveRefresh());
+  document.getElementById("refreshButton")?.addEventListener("click",()=>refreshLiveData());
   document.getElementById("printTodayButton")?.addEventListener("click",()=>window.print());
   document.getElementById("brainButton")?.addEventListener("click",()=>{renderBrain();renderOrderHub();});
 }
 init();
-
-forceLiveRefresh().then(()=>startAutoRefresh());
-window.addEventListener("focus", () => forceLiveRefresh());
-
-document.addEventListener("click", (event)=>{
-  const target=event.target.closest("button,a");
-  if(!target) return;
-  const text=(target.textContent||"").toLowerCase().trim();
-  if(text==="refresh" || target.id==="refreshBtn" || target.id==="refreshButton"){
-    event.preventDefault();
-    forceLiveRefresh();
-  }
-});
+startAutoRefresh();

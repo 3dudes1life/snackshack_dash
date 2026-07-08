@@ -365,24 +365,17 @@ The old/generated generic logo and `icon.svg` fallback were removed.
 See `LOGO_PROOF.json`.
 
 
-## v40 Brain 8.0 ERP
+## v41 Brain 8.0 Safe Layout
 
-Rebuilt from the last working Brain 7 real-logo dashboard, not the broken embedded-favicon build.
+This version fixes the broken raw-HTML layout by rebuilding from the last styled working dashboard line.
 
-Adds:
-- Fresh Square + Google Sheets fetch on page load.
-- Cache-busting `_=` timestamp on backend requests.
+Included:
+- Original styled dashboard layout preserved.
+- Brain 8.0 labels.
+- Live Sync panel.
 - Auto-refresh every 60 seconds.
-- Refresh on browser focus.
-- Manual Refresh button calls live sync.
-- Live Sync panel with last sync and next sync countdown.
-- Brain 8.0 ERP cards:
-  - cash on deck
-  - production queue
-  - smart prep/shopping list
-  - estimated profit and margin
-  - name cleanup flags
-- Keeps Square orders/invoices, production demand, Send Demand to Planner, and recipe workspace.
-- Favicon files are normal files, not giant embedded data URI.
-
-Upload this ZIP over the GitHub Pages files.
+- Cache-busted Apps Script calls so Square + Google Sheets refresh fresh.
+- Refresh button pulls live data instead of hard reloading.
+- ERP cards for profit health, production queue, and Square name cleanup.
+- Real uploaded logo remains.
+- Normal favicon files only, no embedded base64 favicon.
