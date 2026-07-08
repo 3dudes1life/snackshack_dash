@@ -8,8 +8,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="./src/styles.css?v=92-final-mobile-nav-invoice">
-<link rel="stylesheet" href="./src/mobile.css?v=92-final-mobile-nav-invoice">
+<link rel="stylesheet" href="./src/styles.css?v=93-invoice-placeholder-fix">
+<link rel="stylesheet" href="./src/mobile.css?v=93-invoice-placeholder-fix">
 
 <style id="emergency-dashboard-css">
 :root{
@@ -1946,6 +1946,22 @@ body::after {
 }
 
 </style>
+<style id="v93-invoice-placeholder-css">
+body::after { content: "v93 invoice fix" !important; }
+.zero-invoice-note {
+  margin-top: 8px;
+  padding: 9px 10px;
+  border-radius: 14px;
+  background: rgba(255, 246, 219, .88);
+  border: 1px dashed rgba(125, 91, 28, .24);
+  color: #5b4a2d;
+  font-size: .82rem;
+  font-weight: 800;
+}
+.invoice-placeholder {
+  opacity: .72;
+}
+</style>
 </head>
 <body>
 <div class="app-shell">
@@ -2120,8 +2136,8 @@ body::after {
   </main>
 </div>
 
-<script src="data/recipe-library.js?v=92-final-mobile-nav-invoice"></script>
-<script src="data/config.js?v=92-final-mobile-nav-invoice"></script>
-<script src="src/app.js?v=92-final-mobile-nav-invoice"></script>
+<script src="data/recipe-library.js?v=93-invoice-placeholder-fix"></script>
+<script src="data/config.js?v=93-invoice-placeholder-fix"></script>
+<script src="src/app.js?v=93-invoice-placeholder-fix"></script>
 </body>
 </html>

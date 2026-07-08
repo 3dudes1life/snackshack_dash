@@ -442,3 +442,14 @@ Fixes:
 - Merged item can display as `Order + Invoice`.
 
 Brain 8.0 logic is preserved.
+
+
+## v93 Invoice Placeholder Fix
+
+Fixes the Square duplicate-order issue where a $0 invoice/placeholder record like `July Cookies` was being counted as a second bakery order.
+
+Now:
+- Open Orders = real bakery work only.
+- Open Invoices can still show unpaid invoice record count.
+- $0 placeholder invoices are ignored for Open Orders, Open Value, and Production Demand.
+- Order list shows a note if placeholder invoices were ignored.

@@ -1,0 +1,21 @@
+{
+  "version": "v93-invoice-placeholder-fix",
+  "fix": "Open bakery orders and production demand now ignore $0 placeholder invoices like the July Cookies invoice.",
+  "details": [
+    "Open Invoices metric can still show unpaid invoice records.",
+    "$0 placeholder invoices no longer enter combinedOpenSquareDocuments.",
+    "$0 placeholder invoices no longer add to Open Orders.",
+    "$0 placeholder invoices no longer add production demand.",
+    "Open Value is based on real bakery work only.",
+    "Order list shows a note when placeholder invoices were ignored.",
+    "Bottom-right marker says v93 invoice fix."
+  ],
+  "kept": [
+    "v92 mobile nav grid",
+    "v91 fixed mobile header",
+    "Brain 8.0",
+    "Square + Google Sheets live sync",
+    "Production Demand",
+    "Send Demand to Planner"
+  ]
+}

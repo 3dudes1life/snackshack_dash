@@ -665,10 +665,44 @@ function dedupeOpenSquareDocuments(docs) {
   return result.map(({__items, __signature, __total, ...doc}) => doc);
 }
 
+
+/* v93 invoice placeholder fix */
+function isPlaceholderInvoice(invoice) {
+  const total = invoiceTotal(invoice);
+  const items = invoiceItems(invoice);
+  const text = norm([
+    invoice.title,
+    invoice.description,
+    invoice.name,
+    invoice.id,
+    ...items.map(item => item.name)
+  ].filter(Boolean).join(" "));
+
+  if (total > 0.009) return false;
+
+  const hasRealCookieMatch = items.some(item => {
+    const recipe = matchRecipeFromOrderItem(item);
+    return recipe && !/july|placeholder|test|deposit|draft/.test(norm(item.name));
+  });
+
+  if (!hasRealCookieMatch) return true;
+  if (/july|placeholder|test|draft|zero/.test(text)) return true;
+
+  return true;
+}
+
+function openSquareInvoicesForBakeryWork() {
+  return openSquareInvoices().filter(invoice => !isPlaceholderInvoice(invoice));
+}
+
+function placeholderOpenInvoices() {
+  return openSquareInvoices().filter(isPlaceholderInvoice);
+}
+
 function combinedOpenSquareDocuments() {
   return dedupeOpenSquareDocuments([
     ...openSquareOrders().map(o => ({...o, docType:"Order"})),
-    ...openSquareInvoices().map(i => ({...i, docType:"Invoice"}))
+    ...openSquareInvoicesForBakeryWork().map(i => ({...i, docType:"Invoice"}))
   ]);
 }
 function formatDateShort(value) {
@@ -740,7 +774,7 @@ function squareOrderSummary() {
   const openInvoices = openSquareInvoices();
   const combinedOpen = combinedOpenSquareDocuments();
   const openRevenue = open.reduce((s,o) => s + orderTotal(o), 0);
-  const openInvoiceRevenue = openInvoices.reduce((s,i) => s + invoiceTotal(i), 0);
+  const openInvoiceRevenue = openSquareInvoicesForBakeryWork().reduce((s,i) => s + invoiceTotal(i), 0);
   const totalRevenue = orders.reduce((s,o) => s + orderTotal(o), 0);
   const totalInvoiceRevenue = invoices.reduce((s,i) => s + invoiceTotal(i), 0);
   const demand = buildOrderDemand();
@@ -767,8 +801,8 @@ function renderOrderHub() {
   if (orderSummary) {
     orderSummary.innerHTML = [
       ["Open Orders", summary.combinedOpen.length, "Unique bakery orders"],
-      ["Open Invoices", summary.openInvoices.length, "Unpaid invoice records"],
-      ["Open Value", money(summary.openRevenue + summary.openInvoiceRevenue), "Orders + invoices"],
+      ["Open Invoices", summary.openInvoices.length, "Unpaid records; $0 ignored"],
+      ["Open Value", money(summary.openRevenue + summary.openInvoiceRevenue), "Real bakery work"],
       ["30-Day Orders", summary.orders.length, "Returned by backend"],
       ["Invoices", summary.invoices.length, "Returned by backend"],
       ["30-Day Value", money(summary.totalRevenue + summary.totalInvoiceRevenue), "Orders + invoices"],
@@ -780,12 +814,13 @@ function renderOrderHub() {
   if (openPill) openPill.textContent = `${summary.open.length + summary.openInvoices.length} open`;
   const openOrders = document.getElementById("openOrders");
   if (openOrders) {
+    const skippedPlaceholders = typeof placeholderOpenInvoices === "function" ? placeholderOpenInvoices() : [];
     openOrders.innerHTML = summary.combinedOpen.length ? summary.combinedOpen.slice(0,20).map(doc => {
       const items = doc.docType === "Invoice" ? invoiceItems(doc) : orderItems(doc);
       const total = doc.docType === "Invoice" ? invoiceTotal(doc) : orderTotal(doc);
       const statusText = doc.docType === "Invoice" ? invoiceStatus(doc) : orderStatus(doc);
       return `<article class="order-card"><div class="order-card-top"><div><b>${doc.customer || doc.customerName || "Square Customer"}</b><span>${formatDateShort(doc.docType === "Invoice" ? invoiceDate(doc) : orderDate(doc)) || "Date pending"}</span></div><strong>${money(total)}</strong></div><p><em>${doc.docType} · ${statusText}${doc.invoiceStatus ? " · Invoice " + doc.invoiceStatus : ""}</em> <small>${doc.id || ""}</small></p><ul>${items.map(item => `<li><span>${item.quantity}× ${item.name}</span><b>${money(item.total)}</b></li>`).join("")}</ul></article>`;
-    }).join("") : `<div class="empty-state">No pending/open Square orders or invoices right now.</div>`;
+    }).join("") + (skippedPlaceholders.length ? `<div class="zero-invoice-note">Ignored ${skippedPlaceholders.length} $0 placeholder invoice${skippedPlaceholders.length===1?"":"s"} for bakery order count and production demand.</div>` : "") : `<div class="empty-state">No pending/open Square orders or invoices right now.</div>`;
   }
   const demandRows = productionDemandBatches();
   const demandPill = document.getElementById("demandPill");
