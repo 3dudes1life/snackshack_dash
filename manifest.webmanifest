@@ -1,10 +1,10 @@
 {
   "name": "C-Dawg's Snack Shack Command Center",
-  "short_name": "C-Dawg's",
+  "short_name": "C-Dawg's HQ",
   "start_url": ".",
   "display": "standalone",
-  "background_color": "#fff8ed",
-  "theme_color": "#7a3f19",
+  "background_color": "#f7f1df",
+  "theme_color": "#f7f1df",
   "icons": [
     { "src": "icon.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "any maskable" }
   ]

@@ -52,3 +52,7 @@ Do not put Square or Etsy tokens directly inside frontend JavaScript.
 
 ## No-Dots Build
 This package intentionally removes all sprinkle and dot background layers. The dashboard now loads `src/styles-no-dots.css?v=3-no-dots` so browsers do not reuse the older cached `src/styles.css`.
+
+
+## Website Vibe Build
+This version is restyled to match the live C-Dawg's Snack Shack site: cream background, faded palm silhouettes, teal headings, coral shop-style buttons, rounded treat cards, and no dot/sprinkle background. It loads `src/styles-website-vibe.css?v=4-website-vibe-no-dots` to bypass cached dashboard CSS.

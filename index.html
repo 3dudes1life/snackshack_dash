@@ -5,62 +5,60 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>C-Dawg's Snack Shack Command Center</title>
   <meta name="description" content="Order hub, baking queue, recipe costing, and profit dashboard for C-Dawg's Snack Shack." />
-  <meta name="theme-color" content="#7a3f19" />
+  <meta name="theme-color" content="#f7f1df" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="C-Dawg's" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="icon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Pacifico&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="src/styles-no-dots.css?v=3-no-dots" />
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="src/styles-website-vibe.css?v=4-website-vibe-no-dots" />
 </head>
 <body>
-  <div class="app-shell">
-    <aside class="sidebar">
-      <div class="brand-block">
-        <img src="icon.svg" alt="C-Dawg's Snack Shack" class="brand-logo" />
-        <div>
-          <p class="eyebrow">C-Dawg's Snack Shack</p>
-          <h1>Command Center</h1>
-        </div>
-      </div>
-
-      <p class="brand-tagline">Cookies, Cowboy Candy & Island Vibes</p>
-
-      <nav class="nav-list" aria-label="Dashboard sections">
-        <a href="#overview" class="nav-link active">🌴 Overview</a>
-        <a href="#today" class="nav-link">🚨 Caleb Queue</a>
-        <a href="#orders" class="nav-link">🧾 Order Hub</a>
-        <a href="#production" class="nav-link">🍪 Production</a>
-        <a href="#recipes" class="nav-link">💰 Recipe Costs</a>
-        <a href="#ingredients" class="nav-link">🛒 Ingredients</a>
-        <a href="#customers" class="nav-link">💕 Customers</a>
-        <a href="#report" class="nav-link">📈 Snack IQ</a>
+  <div class="site-shell">
+    <header class="site-header">
+      <a class="mini-brand" href="#overview" aria-label="C-Dawg's Snack Shack Command Center home">
+        <img src="icon.svg" alt="C-Dawg's Snack Shack" />
+        <span>C-Dawg's</span>
+      </a>
+      <nav class="site-nav" aria-label="Dashboard sections">
+        <a href="#overview">Home</a>
+        <a href="#today">Caleb Queue</a>
+        <a href="#orders" class="nav-shop">Orders</a>
+        <a href="#recipes">Recipe Costs</a>
+        <a href="#ingredients">Ingredients</a>
+        <a href="#report">Snack IQ</a>
       </nav>
+    </header>
 
-      <div class="sidebar-card">
-        <p class="small-label">Monthly Snack Goal</p>
-        <strong id="goalText">Loading...</strong>
-        <div class="progress-track"><span id="goalProgress"></span></div>
-        <p class="muted">Next milestone: keep Caleb booked, not buried.</p>
+    <section class="hero-card">
+      <img src="icon.svg" alt="C-Dawg's Snack Shack" class="hero-logo" />
+      <p class="eyebrow">Live Bakery Command Center</p>
+      <h1>C-Dawg's Snack Shack</h1>
+      <p class="hero-subtitle">Cookies • Treats • Sourdough • Jams</p>
+      <p class="made-fresh">Made fresh in California</p>
+      <div class="hero-actions">
+        <button id="refreshButton" class="ghost-button">Refresh</button>
+        <button id="printTodayButton" class="primary-button">Print today</button>
       </div>
-    </aside>
+    </section>
 
     <main class="main-content">
-      <header class="topbar">
+      <section class="morning-strip">
         <div>
-          <p class="eyebrow">Live bakery snapshot</p>
-          <h2>Good morning, Caleb. Here’s what needs baking.</h2>
+          <p class="eyebrow">Good morning, Caleb</p>
+          <h2>Here’s what needs baking.</h2>
         </div>
-        <div class="topbar-actions">
-          <button id="refreshButton" class="ghost-button">Refresh</button>
-          <button id="printTodayButton" class="primary-button">Print today</button>
+        <div class="goal-chip">
+          <p class="small-label">Monthly Snack Goal</p>
+          <strong id="goalText">Loading...</strong>
+          <div class="progress-track"><span id="goalProgress"></span></div>
         </div>
-      </header>
+      </section>
 
       <section id="overview" class="section-grid overview-grid"></section>
 
@@ -180,6 +178,6 @@
   </div>
 
   <script src="data/sample-data.js"></script>
-  <script src="src/app.js"></script>
+  <script src="src/app.js?v=4-website-vibe"></script>
 </body>
 </html>
