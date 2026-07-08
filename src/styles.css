@@ -625,3 +625,25 @@ details p span{text-align:right;color:var(--muted)}
 .recipe-row small {
   line-height: 1.25;
 }
+
+
+/* v23 Brain 5.0 */
+.brain-summary {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important;
+}
+.brain-summary article strong {
+  font-size: 1.45rem;
+}
+.brain-card.danger {
+  background:#fff0ee;
+  border-color:rgba(201,71,71,.22);
+}
+.brain-card.money {
+  background:#fff4dc;
+}
+.brain-card.warning {
+  background:#fff8e8;
+}
+.brain-card.success {
+  background:#ecf7f2;
+}

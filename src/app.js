@@ -557,27 +557,135 @@ function renderCleanup(){
     ["Projected profit",money(all.reduce((s,r)=>s+estimatedProfit(r),0)),"Using current sell prices"]
   ].filter(Boolean).map(x=>`<div class="list-row"><div><strong>${x[0]}</strong><span>${x[2]}</span></div><b>${x[1]}</b></div>`).join("");
 }
+function percent(value){
+  if(!isFinite(value)) return "0%";
+  return `${value.toFixed(1).replace(/\.0$/,"")}%`;
+}
 function buildBrain(){
   const all=mergedRecipes();
   const productionCost=all.reduce((s,r)=>s+batchCostForRecipe(r),0);
   const revenue=all.reduce((s,r)=>s+estimatedRevenue(r),0);
+  const profit=revenue-productionCost;
+  const totalYield=all.reduce((s,r)=>s+productionYield(r),0);
+  const totalDozens=totalYield/12;
+  const profitMargin=revenue>0?(profit/revenue)*100:0;
+  const roi=productionCost>0?(profit/productionCost)*100:0;
+  const avgProfitPerDozen=totalDozens>0?profit/totalDozens:0;
   const zeroMatch=all.filter(r=>!r.costProduct);
   const ingredientTotals=buildIngredientTotals().slice(0,18);
+
+  const planned=all.filter(r=>selectedBatches(r)>0);
+  const profitable=planned.filter(r=>estimatedProfit(r)>0);
+  const losing=planned.filter(r=>estimatedProfit(r)<0);
+  const lowMargin=planned.filter(r=>{
+    const rev=estimatedRevenue(r);
+    const margin=rev>0?(estimatedProfit(r)/rev)*100:0;
+    return rev>0 && margin<55;
+  }).sort((a,b)=>{
+    const ma=estimatedRevenue(a)>0?(estimatedProfit(a)/estimatedRevenue(a))*100:0;
+    const mb=estimatedRevenue(b)>0?(estimatedProfit(b)/estimatedRevenue(b))*100:0;
+    return ma-mb;
+  });
+
+  const highProfit=[...planned].sort((a,b)=>estimatedProfit(b)-estimatedProfit(a))[0];
+  const highCost=[...planned].filter(r=>costEach(r)>0).sort((a,b)=>costEach(b)-costEach(a))[0];
+  const bestMargin=[...planned].filter(r=>estimatedRevenue(r)>0).sort((a,b)=>{
+    const ma=(estimatedProfit(a)/estimatedRevenue(a))*100;
+    const mb=(estimatedProfit(b)/estimatedRevenue(b))*100;
+    return mb-ma;
+  })[0];
+
   const recs=[];
-  if(zeroMatch.length) recs.push({type:"warning",title:"Finish cost linking",text:`${zeroMatch.length} recipes still need sheet matches before all profit math is complete.`});
-  const high=[...all].filter(r=>costEach(r)>0).sort((a,b)=>costEach(b)-costEach(a))[0];
-  if(high) recs.push({type:"money",title:"Most expensive to make",text:`${high.name} is ${money(costEach(high))} per item using Production Planner batches.`});
-  const topBatch=[...all].sort((a,b)=>selectedBatches(b)-selectedBatches(a))[0];
-  if(topBatch && selectedBatches(topBatch)>0) recs.push({type:"success",title:"Main production focus",text:`${topBatch.name} has ${selectedBatches(topBatch)} production batches selected. This drives Smart Prep.`});
-  recs.push({type:"success",title:"Separated correctly",text:"Kitchen batches scale the open recipe only. Production batches control costs, profit, and ingredient prep totals."});
-  return {all,productionCost,revenue,profit:revenue-productionCost,zeroMatch,ingredientTotals,recs};
+  if(!planned.length){
+    recs.push({
+      type:"warning",
+      title:"No production selected",
+      text:"Set Production Planner batches above 0 to activate cost, revenue, margin, ROI, and Smart Prep math."
+    });
+  }
+  if(zeroMatch.length){
+    recs.push({
+      type:"warning",
+      title:"Finish sheet matching",
+      text:`${zeroMatch.length} recipes still need sheet matches before Brain 5.0 can fully trust profit and margin.`
+    });
+  }
+  if(revenue>0){
+    if(profitMargin>=75){
+      recs.push({type:"success",title:"Excellent margin",text:`Current production plan is running at ${percent(profitMargin)} margin. That is strong cottage bakery math.`});
+    } else if(profitMargin>=55){
+      recs.push({type:"money",title:"Healthy margin",text:`Current production plan is at ${percent(profitMargin)} margin. Good, but pricing could still be optimized.`});
+    } else if(profitMargin>0){
+      recs.push({type:"warning",title:"Margin needs attention",text:`Current production plan is only ${percent(profitMargin)} margin. Review sell prices or expensive ingredients.`});
+    } else {
+      recs.push({type:"danger",title:"Negative margin",text:"This production plan is losing money based on current sell prices and batch costs."});
+    }
+  }
+  if(roi>0){
+    recs.push({
+      type: roi>=200 ? "success" : "money",
+      title:"ROI check",
+      text:`For every $1 in ingredients, this plan projects about ${money((profit/productionCost)||0)} back in profit. ROI: ${percent(roi)}.`
+    });
+  }
+  if(losing.length){
+    recs.push({
+      type:"danger",
+      title:"Losing-money recipes",
+      text:`${losing.slice(0,3).map(r=>r.name).join(", ")} are negative profit with current sell prices.`
+    });
+  }
+  if(lowMargin.length){
+    recs.push({
+      type:"warning",
+      title:"Low margin watchlist",
+      text:`Review pricing for ${lowMargin.slice(0,3).map(r=>r.name).join(", ")}. They are under the 55% margin target.`
+    });
+  }
+  if(bestMargin){
+    const margin=(estimatedProfit(bestMargin)/estimatedRevenue(bestMargin))*100;
+    recs.push({
+      type:"success",
+      title:"Best margin recipe",
+      text:`${bestMargin.name} has the strongest current margin at ${percent(margin)}. Good candidate for boxes, promos, or Square featured items.`
+    });
+  }
+  if(highProfit){
+    recs.push({
+      type:"success",
+      title:"Best profit driver",
+      text:`${highProfit.name} currently projects ${money(estimatedProfit(highProfit))} profit from selected production batches.`
+    });
+  }
+  if(highCost){
+    recs.push({
+      type:"money",
+      title:"Most expensive to make",
+      text:`${highCost.name} is ${money(costEach(highCost))} per item / ${money(costDozen(highCost))} per dozen. Price carefully.`
+    });
+  }
+  recs.push({
+    type:"success",
+    title:"Brain 5.0 ready for Square",
+    text:"When Square orders connect, this same brain can compare real order demand against production batches, margin, ROI, and prep needs."
+  });
+
+  return {
+    all, planned, profitable, losing, productionCost, revenue, profit,
+    totalYield, totalDozens, profitMargin, roi, avgProfitPerDozen,
+    zeroMatch, ingredientTotals, recs
+  };
 }
 function renderBrain(){
   const brain=buildBrain();
   document.getElementById("brainSummary").innerHTML=`
     <article><span>Production Cost</span><strong>${money(brain.productionCost)}</strong><small>planner batches only</small></article>
-    <article><span>Projected Revenue</span><strong>${money(brain.revenue)}</strong><small>editable sell prices</small></article>
-    <article><span>Projected Profit</span><strong>${money(brain.profit)}</strong><small>planner estimate</small></article>
+    <article><span>Revenue</span><strong>${money(brain.revenue)}</strong><small>editable sell prices</small></article>
+    <article><span>Profit</span><strong>${money(brain.profit)}</strong><small>projected net</small></article>
+    <article><span>Margin</span><strong>${percent(brain.profitMargin)}</strong><small>profit ÷ revenue</small></article>
+    <article><span>ROI</span><strong>${percent(brain.roi)}</strong><small>profit ÷ ingredient cost</small></article>
+    <article><span>Profit / Dozen</span><strong>${money(brain.avgProfitPerDozen)}</strong><small>across projected yield</small></article>
+    <article><span>Yield</span><strong>${Math.round(brain.totalYield)}</strong><small>planned items</small></article>
     <article><span>Sheet Matches</span><strong>${brain.all.length-brain.zeroMatch.length}/${brain.all.length}</strong><small>linked recipes</small></article>
   `;
   document.getElementById("brainCards").innerHTML=brain.recs.map(item=>`
@@ -601,10 +709,11 @@ function renderBrain(){
           <span>${item.amount.toFixed(2).replace(/\.?0+$/,"")} ${item.unit}</span>
           <small>${money(item.cost)} planned cost</small>
         </article>
-      `).join(""):`<div class="empty-state">No production batches selected yet. Set Production Planner batches above to build this prep list.</div>`}
+      `).join(""):`<div class="empty-state">No production batches selected yet. Set Production Planner batches above 0 to build this prep list.</div>`}
     </div>
   `;
 }
+
 function renderAll(){
   renderOverview();
   renderRecipeList(document.getElementById("recipeSearch")?.value||"");

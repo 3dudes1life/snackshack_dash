@@ -184,3 +184,28 @@ This fixes the sync issue for real.
 
 ### Important
 Old shared `cdawgBatchState` is migrated into Production Planner only, never Kitchen.
+
+
+## v23 Brain 5.0
+
+Adds bakery business intelligence:
+
+- Profit Margin %
+- ROI %
+- Average Profit Per Dozen
+- Total planned yield
+- Revenue / cost / profit summary
+- Low-margin recipe warnings
+- Negative-profit recipe warnings
+- Best-margin recipe callout
+- Best profit-driver callout
+- Square-ready recommendation language
+
+Formulas:
+- Profit Margin = Profit / Revenue
+- ROI = Profit / Production Cost
+- Avg Profit Per Dozen = Profit / Projected Dozens
+
+Still respects the separated batch system:
+- Kitchen batches only scale the visible recipe.
+- Production Planner batches drive Brain 5.0, profit, margin, ROI, and Smart Prep.
