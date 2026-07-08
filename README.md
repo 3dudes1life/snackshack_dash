@@ -49,3 +49,17 @@ Adds a rule-based AI-style brain:
 - Smart shopping/prep list
 - Uses current batch controls
 - Still works without paid AI/API keys
+
+
+## v16 Smart Linking
+
+Fixes recipe linking between the built-in recipe library and Google Sheet products.
+
+The old matcher only handled exact-ish name/alias matches. This version adds:
+- typo normalization (`Chocoloate` → `Chocolate`)
+- abbreviation normalization (`Choc.` → `Chocolate`)
+- generic word removal (`cookies`, `treats`, `recipe`, etc.)
+- manual match map for Chocolate Chip, Rice Krispie Treats, Blackberry Jam, etc.
+- token-score fuzzy matching
+
+This should link recipes that are already in Google Sheets but had slightly different names.

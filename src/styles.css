@@ -333,3 +333,16 @@ details p span{text-align:right;color:var(--muted)}
 @media(max-width:520px){
   .brain-summary{grid-template-columns:1fr;}
 }
+
+
+/* v16-smart-linking */
+.recipe-row em.linked,
+.mini-chip.ok {
+  background:#daf5e5 !important;
+  color:#0e6f3b !important;
+}
+.recipe-row em.text,
+.mini-chip.soft {
+  background:#fff0c8 !important;
+  color:#8a5306 !important;
+}

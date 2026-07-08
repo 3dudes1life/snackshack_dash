@@ -1,6 +1,68 @@
 const money=v=>Number(v||0).toLocaleString(undefined,{style:"currency",currency:"USD"});
 const number=v=>Number(v||0)||0;
-const norm=v=>String(v||"").toLowerCase().replace(/[^a-z0-9]+/g,"");
+const norm=v=>String(v||"").toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]+/g,"");
+
+function titleWords(value){
+  return String(value||"")
+    .toLowerCase()
+    .replace(/&/g," and ")
+    .replace(/chocoloate/g,"chocolate")
+    .replace(/choc\./g,"chocolate")
+    .replace(/choc/g,"chocolate")
+    .replace(/krispies/g,"krispie")
+    .replace(/mac\./g,"macadamia")
+    .replace(/[^a-z0-9]+/g," ")
+    .split(" ")
+    .filter(Boolean)
+    .filter(word=>![
+      "cookie","cookies","treat","treats","soft","chewy","bakery","style",
+      "and","the","a","an","of","with","one","batch","batches","recipe",
+      "photo","google","sheet","cost","costs","pan","9x12","jumbo"
+    ].includes(word));
+}
+
+function smartKey(value){
+  return titleWords(value).join("");
+}
+
+function tokenScore(a,b){
+  const aw=[...new Set(titleWords(a))];
+  const bw=[...new Set(titleWords(b))];
+  if(!aw.length || !bw.length) return 0;
+  const shared=aw.filter(w=>bw.includes(w)).length;
+  return shared / Math.max(aw.length,bw.length);
+}
+
+const MANUAL_MATCHES = {
+  chocolatechipcookies: ["chocolatechip", "classicchocolatechip", "chocolatechipcookies"],
+  brownbutterchocolatechip: ["brownbutterchocolatechip", "brownbutterchocchip", "chewybrownbutterchocolatechip"],
+  doublechocolatechip: ["doublechocolatechip", "doublechocolatechipcookies"],
+  greenmintchocolatechip: ["greenmintchocolatechip", "greenmintchocoloatechip"],
+  whitechocolatemacadamianut: ["whitechocolatemacadamianut", "whitechocmacadamianut", "whitechocolatemacadamianutcookies"],
+  oatmealsraisin: ["oatmealraisin", "bakeryoatmealraisin"],
+  oatmealraisin: ["oatmealraisin", "bakeryoatmealraisin"],
+  molasses: ["molasses", "gingermolasses", "softgingermolasses"],
+  softsprinkle: ["softsprinkle", "sprinkle", "softsprinklecookies", "sugarsprinkle"],
+  pumpkinsnickerdoodle: ["pumpkinsnickerdoodle"],
+  peanutbutter: ["peanutbutter", "softchewypeanutbutter"],
+  redvelvet: ["redvelvet"],
+  thumbprint: ["thumbprint", "thumbprintcookies"],
+  nannypoundcake: ["nannypoundcake", "poundcake"],
+  blackberryjam: ["blackberryjam", "blackberry"],
+  ricekrispietreats: ["ricekrispietreats", "ricekrispie", "ricekrispietreats9x12pan", "ricekrispietreat"],
+  monster: ["monster", "monstercookies"]
+};
+
+function matchingKeysForRecipe(recipe){
+  const names=[recipe.name,...(recipe.aliases||[])];
+  const keys=new Set();
+  names.forEach(name=>{
+    const key=smartKey(name);
+    keys.add(key);
+    if(MANUAL_MATCHES[key]) MANUAL_MATCHES[key].forEach(k=>keys.add(k));
+  });
+  return [...keys].filter(Boolean);
+}
 
 let dashboardData={products:[],ingredients:[],orders:[],customers:[]};
 const bakedRecipes=window.CDAWG_RECIPE_LIBRARY||[];
@@ -49,11 +111,33 @@ async function loadBackendData(){
 
 function recipeKey(r){return norm(r.name)}
 function findCostProduct(r){
-  const names=[r.name,...(r.aliases||[])].map(norm);
-  return (dashboardData.products||[]).find(p=>{
-    const ps=[p.name,p.sku].map(norm);
-    return names.some(n=>ps.includes(n))||ps.some(x=>names.includes(x));
+  const products=dashboardData.products||[];
+  const recipeKeys=matchingKeysForRecipe(r);
+
+  // 1. Strong manual / normalized key match.
+  let found=products.find(p=>{
+    const productKeys=[smartKey(p.name), smartKey(p.sku), norm(p.name), norm(p.sku)].filter(Boolean);
+    return recipeKeys.some(rk=>productKeys.some(pk=>pk===rk || pk.includes(rk) || rk.includes(pk)));
   });
+  if(found) return found;
+
+  // 2. Token score fuzzy match. This catches "Chocolate Chip Cookies" vs "Chocolate Chip".
+  let best=null;
+  let bestScore=0;
+  products.forEach(p=>{
+    const candidates=[p.name,p.sku].filter(Boolean);
+    const recipeNames=[r.name,...(r.aliases||[])];
+    recipeNames.forEach(rn=>{
+      candidates.forEach(pn=>{
+        const score=tokenScore(rn,pn);
+        if(score>bestScore){
+          bestScore=score;
+          best=p;
+        }
+      });
+    });
+  });
+  return bestScore>=0.58 ? best : null;
 }
 function mergedRecipes(){
   const rows=bakedRecipes.map(r=>({...r,key:recipeKey(r),costProduct:findCostProduct(r)}));
@@ -241,7 +325,7 @@ function renderCostCards(){
           <span><small>Flags</small><b>${f}</b></span>
         </div>
         <details>
-          <summary>${p?"Ingredient cost breakdown":"No sheet cost yet"}</summary>
+          <summary>${p?"Ingredient cost breakdown":"No sheet match yet"}</summary>
           ${p?(p.recipe||[]).map(l=>`<p><b>${l.ingredient}</b><span>${number(l.amount).toFixed(2)} ${l.unit||""} • ${money(l.ingredientCost)}</span></p>`).join(""):`<p><b>Recipe text loaded.</b><span>Add matching cost rows.</span></p>`}
         </details>
       </article>`;
@@ -261,7 +345,7 @@ function renderCleanup(){
   const rows=mergedRecipes().map(r=>({r,p:r.costProduct,f:flags(r.costProduct),cost:batchCostForRecipe(r)})).filter(x=>!x.p||x.f>0||x.cost<=0).sort((a,b)=>(b.f-a.f)||(a.cost-b.cost));
   document.getElementById("cleanupList").innerHTML=rows.length?rows.map(x=>`
     <div class="list-row">
-      <div><strong>${x.r.name}</strong><span>${!x.p?"Recipe text has no matching sheet cost yet":`${x.f} zero amount/cost lines • ${selectedBatches(x.r)} batch • ${money(x.cost)}`}</span></div>
+      <div><strong>${x.r.name}</strong><span>${!x.p?"No sheet match found yet — check tab/name format":`${x.f} zero amount/cost lines • ${selectedBatches(x.r)} batch • ${money(x.cost)}`}</span></div>
       <em class="${x.p&&x.cost>0?"warn":"bad"}">${x.p?"Review":"Link"}</em>
     </div>`).join(""):`<div class="empty-state">No obvious cleanup flags.</div>`;
   const p=pricedRecipes();
