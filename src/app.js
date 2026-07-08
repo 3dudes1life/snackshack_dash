@@ -358,14 +358,90 @@ function renderCleanup(){
   ].filter(Boolean).map(x=>`<div class="list-row"><div><strong>${x[0]}</strong><span>${x[2]}</span></div><b>${x[1]}</b></div>`).join("");
 }
 
+
+function normalizeOrder(raw){
+  const source=(raw.platform||raw.source||raw.channel||raw.origin||"Manual").toString();
+  const id=raw.id||raw.orderId||raw.order_id||raw.receiptId||raw.name||`${source}-${Math.random().toString(36).slice(2,7)}`;
+  const customer=raw.customer||raw.customerName||raw.buyerName||raw.recipient||"Unknown customer";
+  const due=raw.due||raw.dueDate||raw.pickupDate||raw.fulfillmentDate||raw.shipBy||raw.createdAt||"";
+  const status=(raw.status||raw.state||"new").toString();
+  const total=number(raw.total||raw.totalMoney||raw.amount||raw.grandTotal||0);
+  const items=(raw.items||raw.lineItems||raw.line_items||[]).map(item=>({
+    name:item.name||item.title||item.variationName||item.itemName||"Unknown item",
+    quantity:number(item.quantity||item.qty||1)||1,
+    modifiers:item.modifiers||item.options||item.variations||[],
+    raw:item
+  }));
+  return {id,source,customer,due,status,total,items,raw};
+}
+
+function allOrders(){
+  return [
+    ...(dashboardData.orders||[]),
+    ...(dashboardData.squareOrders||[]),
+    ...(dashboardData.etsyOrders||[])
+  ].map(normalizeOrder);
+}
+
+function findRecipeForItem(item){
+  const fake={name:item.name,aliases:[item.name]};
+  let matched=findCostProduct(fake);
+  if(matched){
+    const recipe=mergedRecipes().find(r=>r.costProduct===matched || norm(r.costProduct?.name)===norm(matched.name));
+    if(recipe) return recipe;
+  }
+  let best=null, bestScore=0;
+  mergedRecipes().forEach(r=>{
+    const score=Math.max(
+      tokenScore(item.name,r.name),
+      ...(r.aliases||[]).map(a=>tokenScore(item.name,a))
+    );
+    if(score>bestScore){bestScore=score;best=r;}
+  });
+  return bestScore>=0.45?best:null;
+}
+
+function buildOrderIntelligence(){
+  const orders=allOrders();
+  const recipeDemand={};
+  const unmatched=[];
+  orders.forEach(order=>{
+    order.items.forEach(item=>{
+      const recipe=findRecipeForItem(item);
+      if(!recipe){
+        unmatched.push({order,item});
+        return;
+      }
+      const key=recipe.key;
+      if(!recipeDemand[key]) recipeDemand[key]={recipe,quantity:0,orders:[]};
+      recipeDemand[key].quantity+=item.quantity;
+      recipeDemand[key].orders.push({order,item});
+    });
+  });
+  return {orders,recipeDemand:Object.values(recipeDemand),unmatched};
+}
+
+function buildProductionPlanFromOrders(){
+  const intel=buildOrderIntelligence();
+  return intel.recipeDemand.map(row=>{
+    const yieldCount=extractYieldNumber(row.recipe.costProduct?.yieldLabel||row.recipe.yield)||1;
+    const batchesNeeded=Math.max(1,Math.ceil(row.quantity/yieldCount));
+    const plannedBatches=selectedBatches(row.recipe);
+    const delta=batchesNeeded-plannedBatches;
+    return {...row,yieldCount,batchesNeeded,plannedBatches,delta};
+  }).sort((a,b)=>b.delta-a.delta || b.quantity-a.quantity);
+}
+
 function buildBrain(){
   const all=mergedRecipes();
+  const orderIntel=buildOrderIntelligence();
+  const productionPlan=buildProductionPlanFromOrders();
   const costed=all.filter(r=>r.costProduct);
   const zeroCost=all.filter(r=>!r.costProduct || batchCostForRecipe(r)<=0);
   const flagged=all.filter(r=>r.costProduct && flags(r.costProduct)>0);
   const productionCost=all.reduce((s,r)=>s+batchCostForRecipe(r),0);
   const totalBatches=all.reduce((s,r)=>s+selectedBatches(r),0);
-  const priced=costed.filter(r=>batchCostForRecipe(r)>0);
+  const priced=all.filter(r=>batchCostForRecipe(r)>0);
   const avgCookie=priced.length?priced.reduce((s,r)=>s+perCookieForRecipe(r),0)/priced.length:0;
   const expensive=[...priced].sort((a,b)=>perCookieForRecipe(b)-perCookieForRecipe(a)).slice(0,3);
   const bestValue=[...priced].sort((a,b)=>perCookieForRecipe(a)-perCookieForRecipe(b)).slice(0,3);
@@ -386,53 +462,75 @@ function buildBrain(){
     });
   });
 
-  const shopping=Object.values(ingredientTotals)
-    .filter(x=>x.amount>0)
-    .sort((a,b)=>b.cost-a.cost)
-    .slice(0,14);
-
+  const shopping=Object.values(ingredientTotals).filter(x=>x.amount>0).sort((a,b)=>b.cost-a.cost).slice(0,18);
   const recommendations=[];
+
+  if(orderIntel.orders.length){
+    recommendations.push({
+      type:"success",
+      title:"Orders are flowing",
+      text:`Snack IQ sees ${orderIntel.orders.length} order${orderIntel.orders.length===1?"":"s"} and ${productionPlan.length} matched recipe demand group${productionPlan.length===1?"":"s"}.`
+    });
+    const under=productionPlan.filter(p=>p.delta>0);
+    if(under.length){
+      recommendations.push({
+        type:"danger",
+        title:"Batch counts may be too low",
+        text:`Increase batches for ${under.slice(0,3).map(p=>`${p.recipe.name} (+${p.delta})`).join(", ")} based on current order quantities.`
+      });
+    } else {
+      recommendations.push({
+        type:"success",
+        title:"Batch plan covers orders",
+        text:"Current batch counts appear to cover matched order demand."
+      });
+    }
+    if(orderIntel.unmatched.length){
+      recommendations.push({
+        type:"warning",
+        title:"Unmatched Square/Etsy items",
+        text:`${orderIntel.unmatched.length} order item${orderIntel.unmatched.length===1?"":"s"} need a recipe/product name mapping.`
+      });
+    }
+  } else {
+    recommendations.push({
+      type:"warning",
+      title:"Square-ready, not Square-fed yet",
+      text:"When Square orders are connected, Snack IQ will convert line items into recipes, batches, shopping needs, and Caleb’s next actions."
+    });
+  }
+
   if(zeroCost.length) recommendations.push({
     type:"danger",
     title:"Fix cost links first",
-    text:`${zeroCost.length} recipes have no usable cost yet. Those will make profit and production totals lie. Start with ${zeroCost.slice(0,3).map(r=>r.name).join(", ")}.`
+    text:`${zeroCost.length} recipes have no usable cost yet. This blocks true margin math.`
   });
   if(flagged.length) recommendations.push({
     type:"warning",
     title:"Clean ingredient mismatches",
-    text:`${flagged.length} recipes have zero-cost ingredient lines. This is usually naming like Vanilla vs Pure Vanilla Extract or Sugar typos.`
-  });
-  if(totalBatches>18) recommendations.push({
-    type:"warning",
-    title:"Big production day",
-    text:`You have ${totalBatches} batches selected. Caleb may need a prep list, cooling rack plan, and packaging check before starting.`
+    text:`${flagged.length} recipes have zero-cost ingredient lines. This is usually naming like Vanilla vs Pure Vanilla Extract or sugar typos.`
   });
   if(expensive[0]) recommendations.push({
     type:"money",
-    title:"Watch the expensive cookie",
-    text:`${expensive[0].name} is currently the highest cost at ${money(perCookieForRecipe(expensive[0]))} each. Price it carefully.`
+    title:"Watch the expensive recipe",
+    text:`${expensive[0].name} is currently highest cost at ${money(perCookieForRecipe(expensive[0]))} each. Price it carefully.`
   });
   if(bestValue[0]) recommendations.push({
     type:"success",
     title:"Best margin candidate",
-    text:`${bestValue[0].name} is currently the lowest cost at ${money(perCookieForRecipe(bestValue[0]))} each. Great for bundles or promo boxes.`
-  });
-  if(!recommendations.length) recommendations.push({
-    type:"success",
-    title:"Looking clean",
-    text:"Recipe costs and batch planning look stable. Next smart step is adding sale prices so Snack IQ can calculate margin."
+    text:`${bestValue[0].name} is currently lowest cost at ${money(perCookieForRecipe(bestValue[0]))} each. Good candidate for boxes or promos.`
   });
 
-  return {all,costed,zeroCost,flagged,productionCost,totalBatches,avgCookie,expensive,bestValue,shopping,recommendations};
+  return {all,costed,zeroCost,flagged,productionCost,totalBatches,avgCookie,expensive,bestValue,shopping,recommendations,orderIntel,productionPlan};
 }
 
 function renderBrain(){
   const brain=buildBrain();
   document.getElementById("brainSummary").innerHTML=`
+    <article><span>Orders Seen</span><strong>${brain.orderIntel.orders.length}</strong><small>Square/Etsy/manual ready</small></article>
     <article><span>Production Cost</span><strong>${money(brain.productionCost)}</strong><small>${brain.totalBatches} selected batches</small></article>
-    <article><span>Avg Cost</span><strong>${money(brain.avgCookie)}</strong><small>per cookie across costed recipes</small></article>
-    <article><span>Cleanup</span><strong>${brain.zeroCost.length + brain.flagged.length}</strong><small>things blocking smarter profit math</small></article>
-    <article><span>Costed</span><strong>${brain.costed.length}/${brain.all.length}</strong><small>recipes matched to Google Sheet</small></article>
+    <article><span>Recipe Matches</span><strong>${brain.costed.length}/${brain.all.length}</strong><small>Google Sheet linked</small></article>
+    <article><span>Cleanup</span><strong>${brain.zeroCost.length + brain.flagged.length}</strong><small>things blocking smarter math</small></article>
   `;
 
   document.getElementById("brainCards").innerHTML=brain.recommendations.map(item=>`
@@ -442,12 +540,29 @@ function renderBrain(){
     </article>
   `).join("");
 
+  const planRows=brain.productionPlan.length ? brain.productionPlan.map(row=>`
+    <article>
+      <b>${row.recipe.name}</b>
+      <span>${row.quantity} ordered • ${row.batchesNeeded} batch${row.batchesNeeded===1?"":"es"} needed</span>
+      <small>${row.delta>0?`Increase by ${row.delta}`:row.delta<0?`${Math.abs(row.delta)} extra batch${Math.abs(row.delta)===1?"":"es"} planned`:"Batch count looks right"}</small>
+    </article>
+  `).join("") : `<div class="empty-state">No Square/Etsy orders connected yet. This section will become Caleb's production queue once orders are flowing.</div>`;
+
   document.getElementById("shoppingList").innerHTML=`
     <div class="panel-head slim">
       <div>
+        <p class="eyebrow">Square-Ready Production Plan</p>
+        <h2>Order Brain</h2>
+        <p class="muted">When Square is connected, this converts line items into recipes, batches, and next actions.</p>
+      </div>
+    </div>
+    <div class="shopping-grid order-brain-grid">${planRows}</div>
+
+    <div class="panel-head slim second">
+      <div>
         <p class="eyebrow">Smart Shopping / Prep</p>
         <h2>Top Ingredients Needed</h2>
-        <p class="muted">Based on current batch controls. This is the first pass; stock-on-hand can come next.</p>
+        <p class="muted">Based on current batch controls. Stock-on-hand can come next.</p>
       </div>
     </div>
     <div class="shopping-grid">

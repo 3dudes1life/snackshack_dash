@@ -63,3 +63,31 @@ The old matcher only handled exact-ish name/alias matches. This version adds:
 - token-score fuzzy matching
 
 This should link recipes that are already in Google Sheets but had slightly different names.
+
+
+## v17 Snack IQ 4.0
+
+Adds a Square-ready production brain.
+
+### What it can do now
+- Understand current recipe batch controls.
+- Calculate production cost.
+- Calculate top ingredients needed.
+- Warn about missing recipe/cost links.
+- Identify expensive and low-cost recipes.
+- Prepare for incoming Square/Etsy/manual orders.
+
+### What it will do when Square is integrated
+If the backend returns an `orders` or `squareOrders` array, Snack IQ 4.0 will:
+- normalize orders
+- read customer/source/due date/status
+- read line items and quantities
+- match order items to recipes
+- calculate batches needed
+- compare order demand to planned batches
+- warn Caleb when batches are too low
+- create a Square-ready production plan
+- build shopping/prep needs from real orders
+
+### Security note
+Do not put Square access tokens in GitHub Pages. Square keys must live in Apps Script, Cloudflare Worker, Netlify Function, or another secure backend.
