@@ -1,0 +1,18 @@
+{
+  "version": "v40-brain-8-erp",
+  "base": "rebuilt from last working Brain 7 real-logo line, not embedded-favicon broken line",
+  "features": [
+    "fresh Apps Script fetch on page load",
+    "cache-busting timestamp on backend calls",
+    "auto refresh every 60 seconds",
+    "refresh on browser focus",
+    "manual Refresh button pulls live data instead of just reload",
+    "live sync status panel",
+    "Brain 8.0 ERP cards",
+    "order/invoice value, demand cost, profit and margin",
+    "production queue from Square demand",
+    "smart prep/shopping pull",
+    "favicon files at root and assets without giant embedded base64"
+  ],
+  "logo": "assets/cdawgs-snackshack-uploaded-logo.jpeg"
+}
