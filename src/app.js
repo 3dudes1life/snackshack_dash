@@ -1,105 +1,27 @@
-const money = value => Number(value || 0).toLocaleString(undefined, { style: "currency", currency: "USD" });
-const recipes = (window.CDAWG_RECIPE_LIBRARY && window.CDAWG_RECIPE_LIBRARY.recipes) || [];
-const ingredients = (window.CDAWG_RECIPE_LIBRARY && window.CDAWG_RECIPE_LIBRARY.ingredients) || [];
-let selectedSku = recipes[0]?.sku || "";
+const money=v=>Number(v||0).toLocaleString(undefined,{style:"currency",currency:"USD"});
+const number=v=>Number(v||0)||0;
+const norm=v=>String(v||"").toLowerCase().replace(/[^a-z0-9]+/g,"");
+let dashboardData={products:[],ingredients:[],orders:[],customers:[]};
+const bakedRecipes=window.CDAWG_RECIPE_LIBRARY||[];
 
-function renderOverview() {
-  const totalCost = recipes.reduce((sum, r) => sum + Number(r.totalBatchCost || 0), 0);
-  const avg = recipes.length ? recipes.reduce((sum, r) => sum + Number(r.costPerUnit || 0), 0) / recipes.length : 0;
-  const most = [...recipes].sort((a,b) => b.costPerUnit - a.costPerUnit)[0];
-  const cheapest = [...recipes].sort((a,b) => a.costPerUnit - b.costPerUnit)[0];
-  document.getElementById("loadedRecipeCount").textContent = `${recipes.length} recipes`;
-  const cards = [
-    ["Recipes", recipes.length, "Loaded into cook mode", "success"],
-    ["Ingredients", ingredients.length, "Cost chips", "square"],
-    ["All Batch Cost", money(totalCost), "All loaded recipes", "money"],
-    ["Avg Cost", money(avg), "Per cookie/jar/square", "etsy"],
-    ["Priciest", most?.name || "—", most ? money(most.costPerUnit) + " each" : "—", "danger"],
-    ["Cheapest", cheapest?.name || "—", cheapest ? money(cheapest.costPerUnit) + " each" : "—", "cookie"]
-  ];
-  document.getElementById("overview").innerHTML = cards.map(([label,value,detail,tone]) => `
-    <article class="metric-card ${tone}"><p>${label}</p><strong>${value}</strong><span>${detail}</span></article>
-  `).join("");
-}
+function jsonp(url){return new Promise((resolve,reject)=>{const cb=`snackshackCallback_${Date.now()}_${Math.random().toString(36).slice(2)}`;const s=document.createElement("script");const t=setTimeout(()=>{cleanup();reject(new Error("Backend timed out. Using baked recipe library only."));},12000);function cleanup(){clearTimeout(t);try{delete window[cb]}catch(e){window[cb]=undefined}if(s.parentNode)s.parentNode.removeChild(s)}window[cb]=d=>{cleanup();resolve(d||{})};s.onerror=()=>{cleanup();reject(new Error("Backend failed. Using baked recipe library only."))};s.src=`${url}${url.includes("?")?"&":"?"}callback=${cb}&t=${Date.now()}`;document.body.appendChild(s)})}
+async function loadBackendData(){const url=window.SNACKSHACK_API_URL||"";if(!url||url.includes("PASTE"))throw new Error("Missing backend URL.");const live=await jsonp(url);if(!live||live.error)throw new Error(live?.message||"Backend returned an error.");dashboardData={...dashboardData,...live,products:Array.isArray(live.products)?live.products:[],ingredients:Array.isArray(live.ingredients)?live.ingredients:[]}}
+function findCostProduct(r){const names=[r.name,...(r.aliases||[])].map(norm);return(dashboardData.products||[]).find(p=>{const ps=[p.name,p.sku].map(norm);return names.some(n=>ps.includes(n))||ps.some(x=>names.includes(x))})}
+function mergedRecipes(){const rows=bakedRecipes.map(r=>({...r,costProduct:findCostProduct(r)}));const existing=new Set(bakedRecipes.flatMap(r=>[r.name,...(r.aliases||[])]).map(norm));(dashboardData.products||[]).forEach(p=>{if(!existing.has(norm(p.name)))rows.push({name:p.name,yield:p.yieldLabel||`${p.batchYieldUnits||""} ${p.unitLabel||""}`.trim(),source:"Google Sheet",ingredients:(p.recipe||[]).map(l=>`${l.amount||""} ${l.unit||""} ${l.ingredient}`.trim()),steps:["Recipe text not uploaded yet. Cost data is connected from the Google Sheet."],costProduct:p})});return rows.sort((a,b)=>a.name.localeCompare(b.name))}
+function batchCost(p){return p?(number(p.totalBatchCost)||(p.recipe||[]).reduce((s,l)=>s+number(l.ingredientCost),0)):0}
+function perCookie(p){return p?(number(p.costPerCookie)||(number(p.batchYieldUnits)?batchCost(p)/number(p.batchYieldUnits):0)):0}
+function perDozen(p){return p?(number(p.costPerDozen)||perCookie(p)*12):0}
+function flags(p){return p?(p.recipe||[]).filter(l=>number(l.amount)<=0||number(l.ingredientCost)<=0).length:0}
+function priced(){return(dashboardData.products||[]).filter(p=>batchCost(p)>0||perCookie(p)>0)}
+function needs(){return(dashboardData.products||[]).filter(p=>batchCost(p)<=0&&perCookie(p)<=0)}
 
-function renderRecipeList(filter = "") {
-  const q = filter.trim().toLowerCase();
-  const list = recipes.filter(r => !q || r.name.toLowerCase().includes(q) || r.category.toLowerCase().includes(q));
-  document.getElementById("recipeList").innerHTML = list.map(r => `
-    <button class="recipe-list-item ${r.sku === selectedSku ? "active" : ""}" data-sku="${r.sku}">
-      <strong>${r.name}</strong><span>${r.yield} ${r.yieldUnit} • ${money(r.totalBatchCost)} batch</span>
-    </button>
-  `).join("");
-  document.querySelectorAll(".recipe-list-item").forEach(btn => btn.addEventListener("click", () => {
-    selectedSku = btn.dataset.sku;
-    renderRecipeList(document.getElementById("recipeSearch").value);
-    renderCookDetail();
-  }));
-}
-
-function renderCookDetail() {
-  const r = recipes.find(x => x.sku === selectedSku) || recipes[0];
-  if (!r) return;
-  document.getElementById("cookDetail").innerHTML = `
-    <div class="cook-title">
-      <div><p class="eyebrow">${r.category}</p><h3>${r.name}</h3><p class="muted">${r.notes}</p></div>
-      <div class="cook-meta"><strong>${r.yield} ${r.yieldUnit}</strong><span>${money(r.costPerUnit)} each • ${money(r.costPerDozen)}/dozen</span></div>
-    </div>
-    <div class="cook-columns">
-      <section><h4>Ingredients</h4><ul class="ingredient-checklist">
-        ${r.ingredients.map(line => `<li><label><input type="checkbox"><span><b>${line.amount}</b> ${line.unit} ${line.ingredient}</span></label></li>`).join("")}
-      </ul></section>
-      <section><h4>Instructions</h4><ol class="instruction-list">${r.instructions.map(step => `<li>${step}</li>`).join("")}</ol></section>
-    </div>
-    <div class="source-note">Source: ${r.source}</div>
-  `;
-}
-
-function renderCostCards() {
-  document.getElementById("costCountPill").textContent = `${recipes.length} recipes`;
-  document.getElementById("costScroller").innerHTML = recipes.map(r => `
-    <article class="cost-card">
-      <div class="recipe-top"><div><p class="eyebrow">${r.category}</p><h4>${r.name}</h4><span>${r.yield} ${r.yieldUnit}</span></div><strong>${money(r.totalBatchCost)}</strong></div>
-      <div class="mini-stats">
-        <span>Each <b>${money(r.costPerUnit)}</b></span>
-        <span>Dozen <b>${money(r.costPerDozen)}</b></span>
-        <span>Lines <b>${r.ingredients.length}</b></span>
-      </div>
-      <details><summary>Ingredient breakdown</summary>
-        ${r.ingredients.map(line => `<p><b>${line.ingredient}</b><span>${line.amount} ${line.unit} • ${money(line.ingredientCost)}</span></p>`).join("")}
-      </details>
-    </article>
-  `).join("");
-}
-
-function renderIngredients() {
-  document.getElementById("ingredientCountPill").textContent = `${ingredients.length} costs`;
-  document.getElementById("ingredientGrid").innerHTML = ingredients.sort((a,b) => a.name.localeCompare(b.name)).map(i => `
-    <article class="ingredient-chip">
-      <span>${i.name}</span>
-      <strong>${money(i.costPerUnit)} / ${i.unit}</strong>
-      <small>${i.shoppingUnit || ""}</small>
-    </article>
-  `).join("");
-}
-
-function renderSheetStatus() {
-  document.getElementById("sheetStatus").innerHTML = `
-    <strong>Full recipe library is baked into this dashboard.</strong>
-    <p>This stops the old four-card demo from appearing. The Google Sheet URL stays here for live cost updates later.</p>
-    <code>${window.SNACKSHACK_API_URL || "No backend URL configured"}</code>
-  `;
-}
-
-function init() {
-  renderOverview();
-  renderRecipeList();
-  renderCookDetail();
-  renderCostCards();
-  renderIngredients();
-  renderSheetStatus();
-  document.getElementById("recipeSearch").addEventListener("input", e => renderRecipeList(e.target.value));
-  document.getElementById("refreshButton").addEventListener("click", () => window.location.reload());
-  document.getElementById("printButton").addEventListener("click", () => window.print());
-}
+function renderStatus(live,msg){const all=mergedRecipes();document.getElementById("statusTitle").textContent=live?`${all.length} recipes ready for Caleb`:`${all.length} recipes loaded`;document.getElementById("statusMessage").textContent=live?`${dashboardData.ingredients.length} ingredient costs connected from Google Sheets.`:(msg||"Recipe cards still work.");document.getElementById("recipeLibraryCount").textContent=`${all.length} recipes`;document.getElementById("goalProgress").style.width=`${Math.min(100,all.length/18*100)}%`}
+function renderOverview(){const all=mergedRecipes();const p=priced();const n=needs();const avg=p.length?p.reduce((s,x)=>s+perCookie(x),0)/p.length:0;const cards=[["Cook Cards",all.length,"Recipe photos/docs built in","cookie"],["Costed Recipes",`${p.length}/${dashboardData.products.length||0}`,"From Google Sheet","success"],["Ingredients",dashboardData.ingredients.length,"Cute cost chips","square"],["Avg Cost/Cookie",money(avg),"Across priced recipes","etsy"],["Needs Cleanup",n.length,"Recipes showing $0",n.length?"danger":"success"],["Next Step","Prices","Add sale prices later","money"]];document.getElementById("overview").innerHTML=cards.map(c=>`<article class="metric-card ${c[3]}"><p>${c[0]}</p><strong>${c[1]}</strong><span>${c[2]}</span></article>`).join("");document.getElementById("recipeCountPill").textContent=`${all.length} recipe cards`;document.getElementById("ingredientCountPill").textContent=`${dashboardData.ingredients.length} costs`}
+function renderCookCards(filter=""){const q=filter.trim().toLowerCase();const all=mergedRecipes().filter(r=>!q||r.name.toLowerCase().includes(q)||(r.ingredients||[]).join(" ").toLowerCase().includes(q));document.getElementById("cookCards").innerHTML=all.map(r=>`<article class="cook-card"><div class="cook-card-head"><div><p class="eyebrow">${r.yield||"Yield TBD"}</p><h4>${r.name}</h4><span>${[r.prep&&`Prep ${r.prep}`,r.cook&&`Cook ${r.cook}`].filter(Boolean).join(" • ")||r.source||""}</span></div><span class="tiny-badge">${r.costProduct?"Cost linked":"Text only"}</span></div><div class="cook-card-body"><h5>Ingredients</h5><ul>${(r.ingredients||[]).map(i=>`<li>${i}</li>`).join("")}</ul><h5>Steps</h5><ol>${(r.steps||[]).map(s=>`<li>${s}</li>`).join("")}</ol></div></article>`).join("")}
+function renderCostCards(){const all=mergedRecipes();document.getElementById("recipeCards").innerHTML=all.map(r=>{const p=r.costProduct;const cost=batchCost(p), pc=perCookie(p), pd=perDozen(p), f=flags(p);return`<article class="recipe-card ${!p||cost<=0?"needs-cleanup":""}"><div class="recipe-top"><div><p class="eyebrow">${p?`${number(p.batches)||1} ${(number(p.batches)||1)===1?"batch":"batches"}`:"text only"}</p><h4>${r.name}</h4><span>${p?(p.yieldLabel||r.yield):(r.yield||"Yield TBD")}</span></div><strong>${money(cost)}</strong></div><div class="mini-stats"><span>Cookie <b>${money(pc)}</b></span><span>Dozen <b>${money(pd)}</b></span><span>Flags <b>${f}</b></span></div><details><summary>${p?"Cost breakdown":"No sheet cost yet"}</summary>${p?(p.recipe||[]).map(l=>`<p><b>${l.ingredient}</b><span>${number(l.amount).toFixed(2)} ${l.unit||""} • ${money(l.ingredientCost)}</span></p>`).join(""):`<p><b>Recipe text loaded.</b><span>Add matching cost rows.</span></p>`}</details></article>`}).join("")}
+function renderIngredients(){const ing=[...(dashboardData.ingredients||[])].sort((a,b)=>a.name.localeCompare(b.name));document.getElementById("ingredientGrid").innerHTML=ing.length?ing.map(i=>`<article class="ingredient-chip"><div><strong>${i.name}</strong><span>${i.shoppingUnit||i.packageSize||"package"} • ${money(i.price)}</span></div><b>${money(i.costPerUnit)} <small>/ ${i.unit||i.recipeUnit||"unit"}</small></b></article>`).join(""):`<div class="empty-state full">No ingredient costs loaded yet.</div>`}
+function renderCleanup(){const rows=mergedRecipes().map(r=>({r,p:r.costProduct,f:flags(r.costProduct),cost:batchCost(r.costProduct)})).filter(x=>!x.p||x.f>0||x.cost<=0).sort((a,b)=>(b.f-a.f)||(a.cost-b.cost));document.getElementById("cleanupList").innerHTML=rows.length?rows.map(x=>`<div class="task-card"><div><strong>${x.r.name}</strong><p>${!x.p?"Recipe text has no matching sheet cost yet":`${x.f} zero amount/cost lines • Batch ${money(x.cost)}`}</p></div><span class="pill ${x.p&&x.cost>0?"warning":"danger"}">${x.p?"Review":"Link"}</span></div>`).join(""):`<div class="alert success">No obvious cleanup flags.</div>`;const p=priced();const high=[...p].sort((a,b)=>perCookie(b)-perCookie(a))[0],low=[...p].sort((a,b)=>perCookie(a)-perCookie(b))[0];document.getElementById("costExtremes").innerHTML=[high&&["Most expensive",high.name,`${money(perCookie(high))}/cookie • ${money(perDozen(high))}/dozen`],low&&["Least expensive",low.name,`${money(perCookie(low))}/cookie • ${money(perDozen(low))}/dozen`],["Costed recipes",p.length,"Live from sheet"],["Recipe library",mergedRecipes().length,"Cook cards available"]].filter(Boolean).map(x=>`<div class="leader-row"><div><strong>${x[0]}</strong><span>${x[2]}</span></div><b>${x[1]}</b></div>`).join("")}
+function renderReport(){const cards=[["Live source",dashboardData.source||"Recipe library",dashboardData.generatedAt?`Generated ${new Date(dashboardData.generatedAt).toLocaleString()}`:"Baked into dashboard"],["Cook cards",mergedRecipes().length,"Scrollable recipe mode"],["Ingredient chips",dashboardData.ingredients.length,"Cute compact cost view"],["Next backend step","Sell prices","Add price tab for profit/margin"]];document.getElementById("snackReport").innerHTML=cards.map(c=>`<article class="report-card"><p>${c[0]}</p><strong>${c[1]}</strong><span>${c[2]}</span></article>`).join("")}
+function renderAll(){renderOverview();renderCookCards();renderCostCards();renderIngredients();renderCleanup();renderReport()}
+async function init(){let live=false,msg="";try{await loadBackendData();live=true}catch(e){console.warn(e);msg=e.message}renderStatus(live,msg);renderAll();document.getElementById("recipeSearch")?.addEventListener("input",e=>renderCookCards(e.target.value));document.getElementById("refreshButton")?.addEventListener("click",()=>window.location.reload());document.getElementById("printTodayButton")?.addEventListener("click",()=>window.print())}
 init();

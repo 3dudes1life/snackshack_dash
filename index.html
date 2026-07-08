@@ -1,89 +1,35 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>C-Dawg's Snack Shack Recipe Command Center</title>
-  <meta name="theme-color" content="#f7f1df" />
-  <link rel="manifest" href="manifest.webmanifest?v=10-cute-full-recipes" />
-  <link rel="icon" href="icon.svg?v=10-cute-full-recipes" type="image/svg+xml" />
-  <link rel="apple-touch-icon" href="icon.svg?v=10-cute-full-recipes" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="src/styles.css?v=10-cute-full-recipes" />
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>C-Dawg's Snack Shack Command Center</title>
+<link rel="manifest" href="manifest.webmanifest?v=10-cute-final"/>
+<link rel="icon" href="icon.svg?v=10-cute-final" type="image/svg+xml"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="src/styles.css?v=10-cute-final"/>
 </head>
 <body>
-  <div class="site-shell">
-    <header class="site-header">
-      <a class="mini-brand" href="#overview"><img src="icon.svg?v=10-cute-full-recipes" alt="C-Dawg's" /><span>C-Dawg's</span></a>
-      <nav class="site-nav">
-        <a href="#overview">Home</a>
-        <a href="#cook" class="nav-shop">Cook Mode</a>
-        <a href="#costs">Costs</a>
-        <a href="#ingredients">Ingredients</a>
-        <a href="#sheet">Sheet Sync</a>
-      </nav>
-      <div class="header-actions">
-        <button id="refreshButton" class="ghost-button">Refresh</button>
-        <button id="printButton" class="primary-button">Print</button>
-      </div>
-    </header>
-
-    <main class="main-content">
-      <section class="status-strip">
-        <div>
-          <p class="eyebrow">Full Recipe Library</p>
-          <h1>C-Dawg’s Recipe Command Center</h1>
-          <p class="muted">Cute scrollable cook cards + scrollable cost cards. No more four-cookie fake demo.</p>
-        </div>
-        <div class="goal-chip">
-          <p class="small-label">Loaded Recipes</p>
-          <strong id="loadedRecipeCount">Loading...</strong>
-          <div class="progress-track"><span style="width:100%"></span></div>
-        </div>
-      </section>
-
-      <section id="overview" class="section-grid overview-grid"></section>
-
-      <section id="cook" class="panel">
-        <div class="section-heading">
-          <div><p class="eyebrow">Cook Mode</p><h3>Pick a recipe and cook from the screen</h3><p class="muted">Recipe list scrolls on the left. Instructions scroll on the right.</p></div>
-          <input id="recipeSearch" class="search-box" placeholder="Search recipes..." />
-        </div>
-        <div class="cook-layout">
-          <div id="recipeList" class="recipe-list-scroll"></div>
-          <article id="cookDetail" class="cook-detail-scroll"></article>
-        </div>
-      </section>
-
-      <section id="costs" class="panel">
-        <div class="section-heading">
-          <div><p class="eyebrow">Recipe Costs</p><h3>Scrollable cost cards</h3><p class="muted">Smaller, cuter cards with cost per item and cost per dozen.</p></div>
-          <span class="pill" id="costCountPill">Loading</span>
-        </div>
-        <div id="costScroller" class="cost-scroll-row"></div>
-      </section>
-
-      <section id="ingredients" class="panel">
-        <div class="section-heading">
-          <div><p class="eyebrow">Master Cost List</p><h3>Ingredient Cost Library</h3><p class="muted">Smaller chips so it doesn’t look like a giant accounting spreadsheet.</p></div>
-          <span class="pill" id="ingredientCountPill">Loading</span>
-        </div>
-        <div id="ingredientGrid" class="ingredient-chip-grid"></div>
-      </section>
-
-      <section id="sheet" class="panel">
-        <div class="section-heading">
-          <div><p class="eyebrow">Google Sheet Sync</p><h3>Backend Status</h3><p class="muted">Local recipe library is included now; Google Sheet stays ready for live costing/order sync.</p></div>
-        </div>
-        <div id="sheetStatus" class="empty-state"></div>
-      </section>
-    </main>
-  </div>
-
-  <script src="data/config.js?v=10-cute-full-recipes"></script>
-  <script src="data/recipes.js?v=10-cute-full-recipes"></script>
-  <script src="src/app.js?v=10-cute-full-recipes"></script>
-</body>
-</html>
+<div class="site-shell">
+<header class="site-header">
+<a class="mini-brand" href="#home"><img src="icon.svg?v=10-cute-final" alt="C-Dawg's"/><span>C-Dawg's</span></a>
+<nav class="site-nav"><a href="#home">Home</a><a class="nav-shop" href="#cook">Cook Mode</a><a href="#costs">Costs</a><a href="#ingredients">Ingredients</a><a href="#cleanup">Cleanup</a><a href="#report">Snack IQ</a></nav>
+<div class="header-actions"><button id="refreshButton" class="ghost-button">Refresh</button><button id="printTodayButton" class="primary-button">Print</button></div>
+</header>
+<main class="main-content">
+<section id="home" class="status-strip">
+<div><p class="eyebrow">C-Dawg Recipe Binder</p><h1 id="statusTitle">Loading Caleb's recipes…</h1><p class="muted" id="statusMessage">Cute cook cards + live ingredient costs.</p></div>
+<div class="goal-chip"><p class="small-label">Recipe Library</p><strong id="recipeLibraryCount">Loading...</strong><div class="progress-track"><span id="goalProgress"></span></div></div>
+</section>
+<section id="overview" class="overview-grid"></section>
+<section id="cook" class="panel"><div class="section-heading"><div><p class="eyebrow">Cook Mode</p><h3>Scrollable Recipe Cards</h3><p class="muted">Pick a recipe and scroll inside the card while baking.</p></div><input id="recipeSearch" class="search-box" placeholder="Search cookies, jam, treats..."/></div><div id="cookCards" class="cook-scroll"></div></section>
+<section id="costs" class="panel"><div class="section-heading"><div><p class="eyebrow">Recipe Costs</p><h3>Scrollable Cost Cards</h3><p class="muted">Live costs from Google Sheet when connected. No giant wall of cards.</p></div><span class="pill" id="recipeCountPill">Waiting</span></div><div id="recipeCards" class="cost-scroll"></div></section>
+<section id="ingredients" class="panel compact-panel"><div class="section-heading"><div><p class="eyebrow">Master Cost List</p><h3>Cute Ingredient Cost Chips</h3><p class="muted">Smaller, softer, easier to scan.</p></div><span class="pill" id="ingredientCountPill">0 costs</span></div><div id="ingredientGrid" class="ingredient-chip-grid"></div></section>
+<section id="cleanup" class="two-col"><div class="panel"><div class="section-heading"><div><p class="eyebrow">Needs Attention</p><h3>Recipe Cleanup Queue</h3><p class="muted">Batch counts, amount-needed cells, or ingredient name cleanup.</p></div></div><div id="cleanupList" class="task-list"></div></div><div class="panel"><div class="section-heading"><div><p class="eyebrow">Cost Extremes</p><h3>What Stands Out</h3></div></div><div id="costExtremes" class="leaderboard"></div></div></section>
+<section id="report" class="panel report-panel"><p class="eyebrow">Snack IQ</p><h3>What the bakery is telling us</h3><div id="snackReport" class="report-grid"></div></section>
+</main></div>
+<script src="data/recipe-library.js?v=10-cute-final"></script>
+<script src="data/config.js?v=10-cute-final"></script>
+<script src="src/app.js?v=10-cute-final"></script>
+</body></html>
