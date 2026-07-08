@@ -47,7 +47,7 @@ const MANUAL_MATCHES={
   monster:["monster","monstercookies","monstercookie"]
 };
 
-let dashboardData={products:[],ingredients:[],orders:[],customers:[],squareCatalog:[],squareInventory:[],squareStatus:'not_connected',squareMessage:''};
+let dashboardData={products:[],ingredients:[],orders:[],customers:[],squareInvoices:[],squareCatalog:[],squareInventory:[],squareStatus:'not_connected',squareMessage:''};
 const bakedRecipes=window.CDAWG_RECIPE_LIBRARY||[];
 let selectedRecipeKey="";
 
@@ -195,6 +195,7 @@ async function loadBackendData(){
     ingredients:Array.isArray(live.ingredients)?live.ingredients:[],
     orders:Array.isArray(live.orders)?live.orders:[],
     customers:Array.isArray(live.customers)?live.customers:[],
+    squareInvoices:Array.isArray(live.squareInvoices)?live.squareInvoices:[],
     squareCatalog:Array.isArray(live.squareCatalog)?live.squareCatalog:[],
     squareInventory:Array.isArray(live.squareInventory)?live.squareInventory:[],
     squareStatus:live.squareStatus||"unknown",
@@ -721,6 +722,41 @@ function orderItems(order){
 function allSquareOrders(){
   return Array.isArray(dashboardData.orders) ? dashboardData.orders : [];
 }
+function allSquareInvoices(){
+  return Array.isArray(dashboardData.squareInvoices) ? dashboardData.squareInvoices : [];
+}
+function invoiceStatus(invoice){
+  return String(invoice.status || invoice.state || "DRAFT").toUpperCase();
+}
+function isOpenInvoice(invoice){
+  const status=invoiceStatus(invoice);
+  return !["PAID","CANCELED","CANCELLED","REFUNDED","FAILED"].includes(status);
+}
+function openSquareInvoices(){
+  return allSquareInvoices().filter(isOpenInvoice);
+}
+function invoiceTotal(invoice){
+  return number(invoice.total || invoice.totalMoney || invoice.amount || invoice.balance || 0);
+}
+function invoiceDate(invoice){
+  return invoice.createdAt || invoice.created_at || invoice.updatedAt || invoice.updated_at || invoice.dueDate || "";
+}
+function invoiceItems(invoice){
+  const items=invoice.items || invoice.lineItems || invoice.line_items || [];
+  return items.map(item=>({
+    name:item.name || item.description || item.title || "Invoice item",
+    quantity:number(item.quantity || item.qty || 1) || 1,
+    total:number(item.total || item.amount || item.totalMoney || 0),
+    variationName:item.variationName || "",
+    catalogObjectId:item.catalogObjectId || "",
+    raw:item
+  }));
+}
+function combinedOpenSquareDocuments(){
+  const orders=openSquareOrders().map(o=>({...o, docType:"Order"}));
+  const invoices=openSquareInvoices().map(i=>({...i, docType:"Invoice"}));
+  return [...orders, ...invoices];
+}
 function openSquareOrders(){
   return allSquareOrders().filter(isOpenOrder);
 }
@@ -747,8 +783,9 @@ function matchRecipeFromOrderItem(item){
 }
 function buildOrderDemand(){
   const rows={};
-  openSquareOrders().forEach(order=>{
-    orderItems(order).forEach(item=>{
+  combinedOpenSquareDocuments().forEach(order=>{
+    const items = order.docType === 'Invoice' ? invoiceItems(order) : orderItems(order);
+    items.forEach(item=>{
       const recipe=matchRecipeFromOrderItem(item);
       const key=recipe ? recipe.key : norm(item.name);
       if(!rows[key]){
@@ -773,20 +810,25 @@ function buildOrderDemand(){
 }
 function squareOrderSummary(){
   const orders=allSquareOrders();
+  const invoices=allSquareInvoices();
   const open=openSquareOrders();
+  const openInvoices=openSquareInvoices();
+  const combinedOpen=combinedOpenSquareDocuments();
   const completed=completedSquareOrders();
   const openRevenue=open.reduce((s,o)=>s+orderTotal(o),0);
+  const openInvoiceRevenue=openInvoices.reduce((s,i)=>s+invoiceTotal(i),0);
   const totalRevenue=orders.reduce((s,o)=>s+orderTotal(o),0);
+  const totalInvoiceRevenue=invoices.reduce((s,i)=>s+invoiceTotal(i),0);
   const demand=buildOrderDemand();
-  return {orders,open,completed,openRevenue,totalRevenue,demand};
+  return {orders,invoices,open,openInvoices,combinedOpen,completed,openRevenue,openInvoiceRevenue,totalRevenue,totalInvoiceRevenue,demand};
 }
 function renderOrderHub(){
   const summary=squareOrderSummary();
   const status=String(dashboardData.squareStatus || (summary.orders.length ? "connected" : "not_connected"));
-  const message=dashboardData.squareMessage || (summary.orders.length ? "Square orders loaded." : "No Square orders returned yet.");
+  const message=dashboardData.squareMessage || ((summary.orders.length || summary.invoices.length) ? "Square data loaded." : "No Square orders or invoices returned yet.");
 
   const orderCountPill=document.getElementById("orderCountPill");
-  if(orderCountPill) orderCountPill.textContent=`${summary.orders.length} orders`;
+  if(orderCountPill) orderCountPill.textContent=`${summary.orders.length + summary.invoices.length} docs`;
 
   const squareStatus=document.getElementById("squareStatus");
   if(squareStatus) {
@@ -804,9 +846,11 @@ function renderOrderHub(){
   if(orderSummary){
     orderSummary.innerHTML=[
       ["Open Orders",summary.open.length,"Pending / active"],
-      ["Open Revenue",money(summary.openRevenue),"Not completed yet"],
+      ["Open Invoices",summary.openInvoices.length,"Unpaid / active"],
+      ["Open Value",money(summary.openRevenue + summary.openInvoiceRevenue),"Orders + invoices"],
       ["30-Day Orders",summary.orders.length,"Returned by backend"],
-      ["30-Day Sales",money(summary.totalRevenue),"Square order total"],
+      ["Invoices",summary.invoices.length,"Returned by backend"],
+      ["30-Day Value",money(summary.totalRevenue + summary.totalInvoiceRevenue),"Orders + invoices"],
       ["Demand Groups",summary.demand.length,"Matched line items"],
       ["Catalog Items",dashboardData.squareCatalog?.length||0,"Square retail layer"]
     ].map(([label,value,detail])=>`
@@ -819,25 +863,25 @@ function renderOrderHub(){
   }
 
   const openPill=document.getElementById("openOrderPill");
-  if(openPill) openPill.textContent=`${summary.open.length} open`;
+  if(openPill) openPill.textContent=`${summary.open.length + summary.openInvoices.length} open`;
 
   const openOrders=document.getElementById("openOrders");
   if(openOrders){
-    openOrders.innerHTML=summary.open.length ? summary.open.slice(0,12).map(order=>{
-      const items=orderItems(order);
+    openOrders.innerHTML=summary.combinedOpen.length ? summary.combinedOpen.slice(0,12).map(order=>{
+      const items=order.docType === 'Invoice' ? invoiceItems(order) : orderItems(order);
       return `
         <article class="order-card">
           <div class="order-card-top">
             <div>
-              <b>${order.customer || "Square Customer"}</b>
+              <b>${order.customer || order.customerName || "Square Customer"}</b>
               <span>${formatDateShort(orderDate(order)) || "Date pending"}</span>
             </div>
             <strong>${money(orderTotal(order))}</strong>
           </div>
-          <p><em>${orderStatus(order)}</em> <small>${order.id || ""}</small></p>
+          <p><em>${order.docType || 'Order'} · ${order.docType === 'Invoice' ? invoiceStatus(order) : orderStatus(order)}</em> <small>${order.id || ""}</small></p>
           <ul>${items.map(item=>`<li><span>${item.quantity}× ${item.name}</span><b>${money(item.total)}</b></li>`).join("")}</ul>
         </article>`;
-    }).join("") : `<div class="empty-state">No pending/open Square orders right now.</div>`;
+    }).join("") : `<div class="empty-state">No pending/open Square orders or invoices right now.</div>`;
   }
 
   const demandPill=document.getElementById("demandPill");
@@ -911,11 +955,11 @@ function buildBrain(){
   })[0];
 
   const recs=[];
-  if(orderSummary.open.length){
+  if(orderSummary.combinedOpen.length){
     recs.push({
       type:"success",
-      title:"Open Square orders",
-      text:`${orderSummary.open.length} open Square order${orderSummary.open.length===1?"":"s"} worth ${money(orderSummary.openRevenue)} are waiting in Order Hub.`
+      title:"Open Square work",
+      text:`${orderSummary.open.length} order${orderSummary.open.length===1?"":"s"} and ${orderSummary.openInvoices.length} invoice${orderSummary.openInvoices.length===1?"":"s"} worth ${money(orderSummary.openRevenue + orderSummary.openInvoiceRevenue)} are waiting in Order Hub.`
     });
   } else {
     recs.push({
@@ -983,7 +1027,7 @@ function buildBrain(){
 function renderBrain(){
   const brain=buildBrain();
   document.getElementById("brainSummary").innerHTML=`
-    <article><span>Open Orders</span><strong>${squareOrderSummary().open.length}</strong><small>${money(squareOrderSummary().openRevenue)} pending</small></article>
+    <article><span>Open Square</span><strong>${squareOrderSummary().combinedOpen.length}</strong><small>${money(squareOrderSummary().openRevenue + squareOrderSummary().openInvoiceRevenue)} pending</small></article>
     <article><span>Cost</span><strong>${money(brain.productionCost)}</strong><small>planner batches</small></article>
     <article><span>Active Revenue</span><strong>${money(brain.activeRevenue)}</strong><small>selected pricing modes</small></article>
     <article><span>Active Profit</span><strong>${money(brain.activeProfit)}</strong><small>projected net</small></article>

@@ -987,3 +987,15 @@ details p span{text-align:right;color:var(--muted)}
 @media(max-width:900px){
   .order-layout { grid-template-columns:1fr; }
 }
+
+
+/* v27 invoice hub */
+.order-card em {
+  max-width: 100%;
+  display:inline-block;
+}
+.square-status b::after {
+  content: " + invoices";
+  color: var(--teal);
+  font-weight: 900;
+}

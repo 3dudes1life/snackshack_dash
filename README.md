@@ -289,3 +289,17 @@ A reference Apps Script file is included at:
 `backend/google-apps-script/Code.gs`
 
 The Square token must stay in Apps Script Script Properties, never in GitHub.
+
+
+## v27 Brain 6.0 Invoice Hub
+
+Fixes:
+- Adds Square invoices to Order Hub.
+- Pending invoices count as open Square work.
+- Open value now includes open orders + unpaid/open invoices.
+- Brain 6.0 recommendations now mention open invoices.
+- Backend reference includes `fetchSquareInvoices_`.
+- Backend reference includes `authorizeSquareFetch_` to force Apps Script OAuth authorization for UrlFetchApp.
+
+Important:
+If the dashboard shows `You do not have permission to call UrlFetchApp.fetch`, open Apps Script, select `authorizeSquareFetch_`, click Run, approve permissions, then Deploy > Manage deployments > Edit > New version > Deploy.
