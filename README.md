@@ -36,3 +36,16 @@ Your current Apps Script can stay if it is already returning Google Sheet JSON.
 - Production cost recalculates instantly.
 - Overview totals update instantly.
 - Does not require Google Sheet edits.
+
+
+## v15 Snack IQ Brain
+
+Adds a rule-based AI-style brain:
+- Production cost summary
+- Batch-aware ingredient totals
+- Smart cleanup warnings
+- Expensive recipe warnings
+- Best-value recipe callouts
+- Smart shopping/prep list
+- Uses current batch controls
+- Still works without paid AI/API keys

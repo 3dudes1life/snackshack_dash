@@ -273,16 +273,111 @@ function renderCleanup(){
     ["Total batches",mergedRecipes().reduce((s,r)=>s+selectedBatches(r),0),"Across recipe cards"]
   ].filter(Boolean).map(x=>`<div class="list-row"><div><strong>${x[0]}</strong><span>${x[2]}</span></div><b>${x[1]}</b></div>`).join("");
 }
-function renderReport(){
+
+function buildBrain(){
   const all=mergedRecipes();
-  const cards=[
-    ["Live source",dashboardData.source||"Recipe library",dashboardData.generatedAt?`Generated ${new Date(dashboardData.generatedAt).toLocaleString()}`:"Built into dashboard"],
-    ["Batch controls","On","Saved in this browser"],
-    ["Production cost",money(all.reduce((s,r)=>s+batchCostForRecipe(r),0)),"Based on current batch counts"],
-    ["Next backend step","Save to Sheet","Optional later"]
-  ];
-  document.getElementById("snackReport").innerHTML=cards.map(c=>`<article class="report-card"><p>${c[0]}</p><strong>${c[1]}</strong><span>${c[2]}</span></article>`).join("");
+  const costed=all.filter(r=>r.costProduct);
+  const zeroCost=all.filter(r=>!r.costProduct || batchCostForRecipe(r)<=0);
+  const flagged=all.filter(r=>r.costProduct && flags(r.costProduct)>0);
+  const productionCost=all.reduce((s,r)=>s+batchCostForRecipe(r),0);
+  const totalBatches=all.reduce((s,r)=>s+selectedBatches(r),0);
+  const priced=costed.filter(r=>batchCostForRecipe(r)>0);
+  const avgCookie=priced.length?priced.reduce((s,r)=>s+perCookieForRecipe(r),0)/priced.length:0;
+  const expensive=[...priced].sort((a,b)=>perCookieForRecipe(b)-perCookieForRecipe(a)).slice(0,3);
+  const bestValue=[...priced].sort((a,b)=>perCookieForRecipe(a)-perCookieForRecipe(b)).slice(0,3);
+
+  const ingredientTotals={};
+  all.forEach(r=>{
+    const p=r.costProduct;
+    if(!p) return;
+    const sheetBatch=sheetBatches(p);
+    const multiplier=selectedBatches(r)/sheetBatch;
+    (p.recipe||[]).forEach(line=>{
+      const name=line.ingredient||"Unknown";
+      const unit=line.unit||"";
+      const key=`${name}__${unit}`;
+      if(!ingredientTotals[key]) ingredientTotals[key]={name,unit,amount:0,cost:0};
+      ingredientTotals[key].amount += number(line.amount)*multiplier;
+      ingredientTotals[key].cost += number(line.ingredientCost)*multiplier;
+    });
+  });
+
+  const shopping=Object.values(ingredientTotals)
+    .filter(x=>x.amount>0)
+    .sort((a,b)=>b.cost-a.cost)
+    .slice(0,14);
+
+  const recommendations=[];
+  if(zeroCost.length) recommendations.push({
+    type:"danger",
+    title:"Fix cost links first",
+    text:`${zeroCost.length} recipes have no usable cost yet. Those will make profit and production totals lie. Start with ${zeroCost.slice(0,3).map(r=>r.name).join(", ")}.`
+  });
+  if(flagged.length) recommendations.push({
+    type:"warning",
+    title:"Clean ingredient mismatches",
+    text:`${flagged.length} recipes have zero-cost ingredient lines. This is usually naming like Vanilla vs Pure Vanilla Extract or Sugar typos.`
+  });
+  if(totalBatches>18) recommendations.push({
+    type:"warning",
+    title:"Big production day",
+    text:`You have ${totalBatches} batches selected. Caleb may need a prep list, cooling rack plan, and packaging check before starting.`
+  });
+  if(expensive[0]) recommendations.push({
+    type:"money",
+    title:"Watch the expensive cookie",
+    text:`${expensive[0].name} is currently the highest cost at ${money(perCookieForRecipe(expensive[0]))} each. Price it carefully.`
+  });
+  if(bestValue[0]) recommendations.push({
+    type:"success",
+    title:"Best margin candidate",
+    text:`${bestValue[0].name} is currently the lowest cost at ${money(perCookieForRecipe(bestValue[0]))} each. Great for bundles or promo boxes.`
+  });
+  if(!recommendations.length) recommendations.push({
+    type:"success",
+    title:"Looking clean",
+    text:"Recipe costs and batch planning look stable. Next smart step is adding sale prices so Snack IQ can calculate margin."
+  });
+
+  return {all,costed,zeroCost,flagged,productionCost,totalBatches,avgCookie,expensive,bestValue,shopping,recommendations};
 }
+
+function renderBrain(){
+  const brain=buildBrain();
+  document.getElementById("brainSummary").innerHTML=`
+    <article><span>Production Cost</span><strong>${money(brain.productionCost)}</strong><small>${brain.totalBatches} selected batches</small></article>
+    <article><span>Avg Cost</span><strong>${money(brain.avgCookie)}</strong><small>per cookie across costed recipes</small></article>
+    <article><span>Cleanup</span><strong>${brain.zeroCost.length + brain.flagged.length}</strong><small>things blocking smarter profit math</small></article>
+    <article><span>Costed</span><strong>${brain.costed.length}/${brain.all.length}</strong><small>recipes matched to Google Sheet</small></article>
+  `;
+
+  document.getElementById("brainCards").innerHTML=brain.recommendations.map(item=>`
+    <article class="brain-card ${item.type}">
+      <p>${item.title}</p>
+      <span>${item.text}</span>
+    </article>
+  `).join("");
+
+  document.getElementById("shoppingList").innerHTML=`
+    <div class="panel-head slim">
+      <div>
+        <p class="eyebrow">Smart Shopping / Prep</p>
+        <h2>Top Ingredients Needed</h2>
+        <p class="muted">Based on current batch controls. This is the first pass; stock-on-hand can come next.</p>
+      </div>
+    </div>
+    <div class="shopping-grid">
+      ${brain.shopping.length?brain.shopping.map(item=>`
+        <article>
+          <b>${item.name}</b>
+          <span>${item.amount.toFixed(2)} ${item.unit}</span>
+          <small>${money(item.cost)} planned cost</small>
+        </article>
+      `).join(""):`<div class="empty-state">No ingredient totals yet because costed recipes are not linked.</div>`}
+    </div>
+  `;
+}
+
 function renderAll(rebind=true){
   renderOverview();
   renderRecipeList(document.getElementById("recipeSearch")?.value||"");
@@ -290,7 +385,7 @@ function renderAll(rebind=true){
   renderCostCards();
   renderIngredients();
   renderCleanup();
-  renderReport();
+  renderBrain();
   bindBatchControls();
 }
 async function init(){
@@ -301,5 +396,6 @@ async function init(){
   document.getElementById("recipeSearch")?.addEventListener("input",e=>renderRecipeList(e.target.value));
   document.getElementById("refreshButton")?.addEventListener("click",()=>window.location.reload());
   document.getElementById("printTodayButton")?.addEventListener("click",()=>window.print());
+  document.getElementById("brainButton")?.addEventListener("click",()=>{renderBrain();});
 }
 init();
