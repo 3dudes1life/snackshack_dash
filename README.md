@@ -1,33 +1,28 @@
-# C-Dawg's Snack Shack Command Center — Cute Recipe Library
+# C-Dawg's Snack Shack Command Center — V3 Pro Rebuild
 
-Upload these files to GitHub to replace the current dashboard.
+This is the full layout rebuild.
 
 ## What changed
-- Added built-in cook-mode recipe library from the uploaded recipe photos/docs.
-- Added horizontal scroll for Cook Mode recipe cards.
-- Added horizontal scroll for Recipe Cost cards.
-- Made ingredient costs smaller/cuter as compact chips.
-- Kept Google Sheet live costs through `data/config.js`.
-- Added cache busting: `v=10-cute-final`.
 
-## Upload/replace
-- index.html
-- src/app.js
-- src/styles.css
-- data/config.js
-- data/recipe-library.js
-- icon.svg
-- manifest.webmanifest
+- Removed all horizontal scrolling.
+- Replaced giant card wall with a professional recipe workspace.
+- Cook Mode now has a recipe list + recipe detail panel.
+- Costed Recipes now use compact responsive cards.
+- Ingredient Costs now use compact chips.
+- Mobile/tablet/desktop layouts are responsive.
+- Sidebar collapses to a top nav on smaller screens.
+- Cache-busted as `v=13-pro-rebuild`.
 
-## Important
-Your current Apps Script backend can stay if it is already returning the recipe/cost JSON.
+## Upload to GitHub
 
+Replace these files:
 
-## v11 Scroll Fix
+- `index.html`
+- `src/app.js`
+- `src/styles.css`
+- `data/recipe-library.js`
+- `data/config.js`
+- `icon.svg`
+- `manifest.webmanifest`
 
-- Cook Mode recipe cards now use forced horizontal scrolling.
-- Recipe Cost cards now use forced horizontal scrolling.
-- Mouse wheel over those sections scrolls sideways.
-- Click-and-drag works on desktop.
-- Visible colored scrollbars were added.
-- Ingredient cost area heading changed from “Cute Ingredient Cost Chips” to “Ingredient Cost Chips”.
+Your current Apps Script can stay if it is already returning Google Sheet JSON.
