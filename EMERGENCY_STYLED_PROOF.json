@@ -1,0 +1,18 @@
+{
+  "version": "v42-emergency-styled",
+  "fix": "Core dashboard CSS is embedded inside index.html so GitHub/Safari cannot show raw HTML if external CSS misses.",
+  "keeps": [
+    "Brain 8.0",
+    "Square Order Hub",
+    "Production demand",
+    "Send demand to planner",
+    "real uploaded logo"
+  ],
+  "normal_files": [
+    "src/styles.css",
+    "src/app.js",
+    "favicon.ico",
+    "favicon.png",
+    "assets/cdawgs-snackshack-uploaded-logo.jpeg"
+  ]
+}

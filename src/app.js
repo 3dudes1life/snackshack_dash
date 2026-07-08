@@ -1,5 +1,5 @@
-const money=v=41-brain-8-safe-layout"currency",currency:"USD"});
-const number=v=41-brain-8-safe-layout"").toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]+/g,"");
+const money=v=42-emergency-styled"currency",currency:"USD"});
+const number=v=42-emergency-styled"").toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]+/g,"");
 
 function titleWords(value){
   return String(value||"").toLowerCase()
@@ -202,7 +202,7 @@ function revenueForMode(r,mode){
 }
 function profitForMode(r,mode){return revenueForMode(r,mode)-batchCostForRecipe(r);}
 function marginForMode(r,mode){
-  const rev=41-brain-8-safe-layout"Corporate DZ", marginForMode(r,"corporate"), revenueForMode(r,"corporate"), profitForMode(r,"corporate")],
+  const rev=42-emergency-styled"Corporate DZ", marginForMode(r,"corporate"), revenueForMode(r,"corporate"), profitForMode(r,"corporate")],
     ["Square DZ", marginForMode(r,"square"), revenueForMode(r,"square"), profitForMode(r,"square")],
     ["Square Each", marginForMode(r,"squareRetailEach"), revenueForMode(r,"squareRetailEach"), profitForMode(r,"squareRetailEach")]
   ].filter(x=>x[2]>0);
@@ -217,7 +217,7 @@ function jsonp(url){
     function cleanup(){clearTimeout(t);try{delete window[cb]}catch(e){window[cb]=undefined}if(s.parentNode)s.parentNode.removeChild(s)}
     window[cb]=d=>{cleanup();resolve(d||{})};
     s.onerror=()=>{cleanup();reject(new Error("Backend failed. Using built-in recipe library."))};
-    s.src=`${url}${url.includes("?")?"&":"?"}callback=${cb}&t=${Date.now()}`;
+    s.src=`${cacheBustUrl(url)}${cacheBustUrl(url).includes('?')?'&':'?'}callback=${cb}`;
     document.body.appendChild(s);
   });
 }
@@ -645,7 +645,7 @@ function renderPricing(){
   const planned=all.filter(r=>selectedBatches(r)>0);
   const orderSummary=squareOrderSummary();
   const rows=(planned.length?planned:all).map(r=>{
-    const corpRev=41-brain-8-safe-layout"corporate"), sqRev=41-brain-8-safe-layout"square"), eachRev=41-brain-8-safe-layout"squareRetailEach");
+    const corpRev=42-emergency-styled"corporate"), sqRev=42-emergency-styled"square"), eachRev=42-emergency-styled"squareRetailEach");
     const target=getTargetMargin(r);
     const suggested=suggestedDzPriceForTarget(r,target);
     return `
@@ -1140,7 +1140,7 @@ function buildBrain(){
   const ingredientTotals=buildIngredientTotals().slice(0,18);
 
   const lowMargin=planned.filter(r=>{
-    const rev=41-brain-8-safe-layout"success",
+    const rev=42-emergency-styled"success",
       title:"Today’s Square action",
       text:`${orderSummary.open.length} order${orderSummary.open.length===1?"":"s"} and ${orderSummary.openInvoices.length} invoice${orderSummary.openInvoices.length===1?"":"s"} are open. Estimated order profit is ${money(orderProfit)} at ${percent(orderMargin)} margin.`
     });
@@ -1302,3 +1302,6 @@ async function init(){
 }
 init();
 startAutoRefresh();
+
+setInterval(liveRefresh,60000);
+window.addEventListener("focus",()=>liveRefresh());
