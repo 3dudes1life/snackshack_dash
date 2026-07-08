@@ -4,51 +4,43 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>C-Dawg's Snack Shack Command Center</title>
-  <meta name="description" content="Recipe-first costing dashboard, baking queue, and ingredient-cost library for C-Dawg's Snack Shack." />
+  <meta name="description" content="Live recipe-costing dashboard for C-Dawg's Snack Shack." />
   <meta name="theme-color" content="#f7f1df" />
-  <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-title" content="C-Dawg's" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <link rel="manifest" href="manifest.webmanifest" />
-  <link rel="icon" href="icon.svg" type="image/svg+xml" />
-  <link rel="apple-touch-icon" href="icon.svg" />
+  <link rel="manifest" href="manifest.webmanifest?v=8-live-sheet-fix" />
+  <link rel="icon" href="icon.svg?v=8-live-sheet-fix" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icon.svg?v=8-live-sheet-fix" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="src/styles-compact.css?v=6-recipe-first" />
+  <link rel="stylesheet" href="src/styles.css?v=8-live-sheet-fix" />
 </head>
 <body>
   <div class="site-shell">
     <header class="site-header">
       <a class="mini-brand" href="#overview" aria-label="C-Dawg's Snack Shack Command Center home">
-        <img src="icon.svg" alt="C-Dawg's Snack Shack" />
+        <img src="icon.svg?v=8-live-sheet-fix" alt="C-Dawg's Snack Shack" />
         <span>C-Dawg's</span>
       </a>
       <nav class="site-nav" aria-label="Dashboard sections">
         <a href="#overview">Home</a>
-        <a href="#today">Caleb Queue</a>
-        <a href="#orders" class="nav-shop">Orders</a>
-        <a href="#production">Production</a>
-        <a href="#recipes">Recipe Costs</a>
+        <a href="#recipes" class="nav-shop">Recipe Costs</a>
         <a href="#ingredients">Ingredients</a>
+        <a href="#cleanup">Cleanup</a>
+        <a href="#orders">Orders Later</a>
         <a href="#report">Snack IQ</a>
       </nav>
       <div class="header-actions">
         <button id="refreshButton" class="ghost-button">Refresh</button>
-        <button id="printTodayButton" class="primary-button">Print today</button>
+        <button id="printTodayButton" class="primary-button">Print</button>
       </div>
     </header>
 
     <main class="main-content">
-      <section class="morning-strip compact-dashboard-head">
-        <div class="dashboard-title-row">
-          <img src="icon.svg" alt="C-Dawg's" class="dash-logo" />
-          <div>
-            <p class="eyebrow">Live recipe costing</p>
-            <h1>Recipe costing is live.</h1>
-            <p class="subtitle-line">Cookies • Treats • Sourdough • Jams</p>
-          </div>
+      <section class="status-strip" id="backendStatus">
+        <div>
+          <p class="eyebrow">Live Google Sheet</p>
+          <h1>Loading Caleb's recipe workbook…</h1>
+          <p class="muted">This dashboard no longer falls back to the old 4-product demo.</p>
         </div>
         <div class="goal-chip">
           <p class="small-label">Monthly Snack Goal</p>
@@ -59,78 +51,14 @@
 
       <section id="overview" class="section-grid overview-grid"></section>
 
-      <section id="today" class="panel split-panel attention-panel">
-        <div>
-          <p class="eyebrow">Action queue</p>
-          <h3>Caleb Queue</h3>
-          <p class="muted">Recipe costs, batch counts, cleanup warnings, and ingredient usage from the Google Sheet.</p>
-        </div>
-        <div id="alerts" class="alert-list"></div>
-      </section>
-
-      <section id="orders" class="panel">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Square + Etsy</p>
-            <h3>Order Hub</h3>
-          </div>
-          <div class="filters">
-            <button class="filter active" data-filter="all">All</button>
-            <button class="filter" data-filter="Etsy">Etsy</button>
-            <button class="filter" data-filter="Square">Square</button>
-            <button class="filter" data-filter="New">New</button>
-            <button class="filter" data-filter="Baking">Baking</button>
-            <button class="filter" data-filter="Ready">Ready</button>
-          </div>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Order</th>
-                <th>Platform</th>
-                <th>Customer</th>
-                <th>Items</th>
-                <th>Due</th>
-                <th>Total</th>
-                <th>Cost</th>
-                <th>Profit</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody id="ordersTable"></tbody>
-          </table>
-        </div>
-      </section>
-
-      <section id="production" class="section-grid two-col">
-        <div class="panel">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">Current workbook batches</p>
-              <h3>Batch Cost Queue</h3>
-            </div>
-          </div>
-          <div id="productionQueue" class="task-list"></div>
-        </div>
-        <div class="panel">
-          <div class="section-heading">
-            <div>
-              <p class="eyebrow">Current batch plan</p>
-              <h3>Ingredient Usage Forecast</h3>
-            </div>
-          </div>
-          <div id="ingredientForecast" class="source-bars"></div>
-        </div>
-      </section>
-
       <section id="recipes" class="panel">
         <div class="section-heading">
           <div>
-            <p class="eyebrow">Google Sheet recipes</p>
+            <p class="eyebrow">Google Sheet Recipes</p>
             <h3>Recipe Costing</h3>
+            <p class="muted">Pulled from the live workbook: batch count, yield, batch cost, cost per cookie, and cost per dozen.</p>
           </div>
-          <span class="pill success">Live recipe workbook connected</span>
+          <span class="pill" id="recipeCountPill">Waiting for backend</span>
         </div>
         <div id="recipeCards" class="recipe-grid"></div>
       </section>
@@ -138,33 +66,47 @@
       <section id="ingredients" class="panel">
         <div class="section-heading">
           <div>
-            <p class="eyebrow">Master cost list</p>
+            <p class="eyebrow">Master Cost List</p>
             <h3>Ingredient Cost Library</h3>
+            <p class="muted">Costs come from the MASTER LIST columns in the Google Sheet.</p>
           </div>
-          <span class="pill warning" id="lowStockCount">0 low stock</span>
+          <span class="pill" id="ingredientCountPill">0 costs loaded</span>
         </div>
         <div id="ingredientGrid" class="inventory-grid"></div>
       </section>
 
-      <section id="customers" class="section-grid two-col">
+      <section id="cleanup" class="section-grid two-col">
         <div class="panel">
           <div class="section-heading">
             <div>
-              <p class="eyebrow">Repeat snackers</p>
-              <h3>Customer Love</h3>
+              <p class="eyebrow">Needs Attention</p>
+              <h3>Recipe Cleanup Queue</h3>
+              <p class="muted">These are usually rows where batch count, amount needed, or ingredient match is still zero.</p>
             </div>
           </div>
-          <div id="customerList" class="leaderboard"></div>
+          <div id="cleanupList" class="task-list"></div>
         </div>
         <div class="panel">
           <div class="section-heading">
             <div>
-              <p class="eyebrow">Best sellers</p>
-              <h3>Cookie Leaderboard</h3>
+              <p class="eyebrow">Cost Extremes</p>
+              <h3>What Stands Out</h3>
+              <p class="muted">Quick look at highest and lowest cost recipes.</p>
             </div>
           </div>
-          <div id="productLeaderboard" class="leaderboard"></div>
+          <div id="costExtremes" class="leaderboard"></div>
         </div>
+      </section>
+
+      <section id="orders" class="panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Phase 2</p>
+            <h3>Square + Etsy Order Hub</h3>
+            <p class="muted">This is intentionally parked until Square/Etsy are connected. Recipe costs are live first.</p>
+          </div>
+        </div>
+        <div id="orderPlaceholder" class="empty-state"></div>
       </section>
 
       <section id="report" class="panel report-panel">
@@ -175,8 +117,7 @@
     </main>
   </div>
 
-<script src="data/sample-data.js?v=7-live-recipes"></script>
-<script src="data/config.js?v=7-live-recipes"></script>
-<script src="src/app.js?v=7-live-recipes"></script>
+  <script src="data/config.js?v=8-live-sheet-fix"></script>
+  <script src="src/app.js?v=8-live-sheet-fix"></script>
 </body>
 </html>

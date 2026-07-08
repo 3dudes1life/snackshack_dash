@@ -1,22 +1,41 @@
 const money = value => Number(value || 0).toLocaleString(undefined, { style: "currency", currency: "USD" });
 const number = value => Number(value || 0) || 0;
-const plural = (count, one, many = `${one}s`) => Number(count) === 1 ? one : many;
-let activeFilter = "all";
+
+let dashboardData = {
+  status: "loading",
+  goal: { current: 0, target: 75, label: "Orders this month" },
+  settings: { businessName: "C-Dawg's Snack Shack", tagline: "Cookies • Treats • Sourdough • Jams", currency: "USD" },
+  products: [],
+  ingredients: [],
+  orders: [],
+  customers: []
+};
 
 function jsonp(url) {
   return new Promise((resolve, reject) => {
     const callbackName = `snackshackCallback_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     const script = document.createElement("script");
+    const timeout = setTimeout(() => {
+      cleanup();
+      reject(new Error("Backend timed out. Check Apps Script deployment and data/config.js."));
+    }, 15000);
+
+    function cleanup() {
+      clearTimeout(timeout);
+      try { delete window[callbackName]; } catch (e) { window[callbackName] = undefined; }
+      if (script.parentNode) script.parentNode.removeChild(script);
+    }
+
     window[callbackName] = data => {
+      cleanup();
       resolve(data || {});
-      delete window[callbackName];
-      script.remove();
     };
+
     script.onerror = () => {
-      delete window[callbackName];
-      script.remove();
-      reject(new Error("Snack Shack backend JSONP failed"));
+      cleanup();
+      reject(new Error("JSONP failed. Test your Apps Script URL with ?callback=testCallback."));
     };
+
     const joiner = url.includes("?") ? "&" : "?";
     script.src = `${url}${joiner}callback=${callbackName}&t=${Date.now()}`;
     document.body.appendChild(script);
@@ -25,30 +44,31 @@ function jsonp(url) {
 
 async function loadBackendData() {
   const apiUrl = window.SNACKSHACK_API_URL || "";
-  if (!apiUrl || apiUrl.includes("PASTE_GOOGLE_APPS_SCRIPT_URL_HERE")) return;
-
-  try {
-    const liveData = await jsonp(apiUrl);
-    if (liveData && !liveData.error) {
-      dashboardData = {
-        ...dashboardData,
-        ...liveData,
-        orders: liveData.orders || [],
-        products: liveData.products || [],
-        ingredients: liveData.ingredients || [],
-        customers: liveData.customers || [],
-        goal: liveData.goal || dashboardData.goal
-      };
-    } else {
-      console.warn("Backend returned an error:", liveData);
-    }
-  } catch (error) {
-    console.warn("Using sample data because backend did not load:", error);
+  if (!apiUrl || apiUrl.includes("PASTE")) {
+    throw new Error("Missing data/config.js backend URL.");
   }
+
+  const liveData = await jsonp(apiUrl);
+
+  if (!liveData || liveData.error) {
+    throw new Error(liveData && liveData.message ? liveData.message : "Backend returned an error.");
+  }
+
+  dashboardData = {
+    ...dashboardData,
+    ...liveData,
+    products: Array.isArray(liveData.products) ? liveData.products : [],
+    ingredients: Array.isArray(liveData.ingredients) ? liveData.ingredients : [],
+    orders: Array.isArray(liveData.orders) ? liveData.orders : [],
+    customers: Array.isArray(liveData.customers) ? liveData.customers : [],
+    goal: liveData.goal || dashboardData.goal
+  };
+
+  return dashboardData;
 }
 
 function recipeBatchCost(product) {
-  return number(product.totalBatchCost) || product.recipe.reduce((sum, line) => sum + number(line.ingredientCost), 0);
+  return number(product.totalBatchCost) || (product.recipe || []).reduce((sum, line) => sum + number(line.ingredientCost), 0);
 }
 
 function recipeCostPerCookie(product) {
@@ -59,6 +79,12 @@ function recipeCostPerDozen(product) {
   return number(product.costPerDozen) || recipeCostPerCookie(product) * 12;
 }
 
+function recipeYield(product) {
+  const amount = number(product.batchYieldUnits);
+  const unit = product.unitLabel || "Cookies";
+  return amount ? `${amount} ${unit}` : (product.yieldLabel || "Yield missing");
+}
+
 function recipesWithCosts() {
   return (dashboardData.products || []).filter(product => recipeBatchCost(product) > 0 || recipeCostPerCookie(product) > 0);
 }
@@ -67,12 +93,40 @@ function recipesNeedingCosts() {
   return (dashboardData.products || []).filter(product => recipeBatchCost(product) <= 0 && recipeCostPerCookie(product) <= 0);
 }
 
+function recipesWithZeroLines(product) {
+  return (product.recipe || []).filter(line => number(line.amount) <= 0 || number(line.ingredientCost) <= 0);
+}
+
 function totalPlannedCookies() {
   return (dashboardData.products || []).reduce((sum, product) => sum + number(product.batchYieldUnits), 0);
 }
 
 function totalPlannedCost() {
   return (dashboardData.products || []).reduce((sum, product) => sum + recipeBatchCost(product), 0);
+}
+
+function averageCostPerCookie() {
+  const priced = recipesWithCosts();
+  return priced.length ? priced.reduce((sum, p) => sum + recipeCostPerCookie(p), 0) / priced.length : 0;
+}
+
+function renderStatus(ok, message) {
+  const strip = document.getElementById("backendStatus");
+  const products = dashboardData.products || [];
+  const ingredients = dashboardData.ingredients || [];
+  const generated = dashboardData.generatedAt ? new Date(dashboardData.generatedAt).toLocaleString() : "just now";
+
+  if (ok) {
+    strip.classList.remove("error");
+    strip.classList.add("success");
+    strip.querySelector("h1").textContent = `${products.length} recipes loaded from Google Sheets`;
+    strip.querySelector(".muted").textContent = `${ingredients.length} ingredient costs connected • Last generated ${generated}`;
+  } else {
+    strip.classList.remove("success");
+    strip.classList.add("error");
+    strip.querySelector("h1").textContent = "Live backend did not load";
+    strip.querySelector(".muted").textContent = message || "Check data/config.js and Apps Script deployment.";
+  }
 }
 
 function renderGoal() {
@@ -87,16 +141,15 @@ function renderOverview() {
   const ingredients = dashboardData.ingredients || [];
   const priced = recipesWithCosts();
   const needing = recipesNeedingCosts();
-  const avgCookieCost = priced.length ? priced.reduce((sum, p) => sum + recipeCostPerCookie(p), 0) / priced.length : 0;
   const highest = [...priced].sort((a, b) => recipeCostPerCookie(b) - recipeCostPerCookie(a))[0];
 
   const cards = [
-    { label: "Recipes Loaded", value: products.length, detail: "Pulled from Caleb's Google Sheet", tone: "success" },
-    { label: "Ingredients", value: ingredients.length, detail: "Master cost library", tone: "square" },
-    { label: "Planned Cookies", value: totalPlannedCookies(), detail: "Based on sheet batch counts", tone: "cookie" },
-    { label: "Planned Cost", value: money(totalPlannedCost()), detail: "Ingredient cost from recipes", tone: "money" },
-    { label: "Avg Cost/Cookie", value: money(avgCookieCost), detail: "Across priced recipes", tone: "etsy" },
-    { label: "Needs Cleanup", value: needing.length, detail: "Recipes still showing $0", tone: needing.length ? "danger" : "success" }
+    { label: "Recipes Loaded", value: products.length, detail: "Live from Google Sheet", tone: "success" },
+    { label: "Ingredient Costs", value: ingredients.length, detail: "Master cost list", tone: "square" },
+    { label: "Planned Cookies", value: totalPlannedCookies(), detail: "Based on sheet yields", tone: "cookie" },
+    { label: "Planned Cost", value: money(totalPlannedCost()), detail: "Current recipe batch costs", tone: "money" },
+    { label: "Avg Cost/Cookie", value: money(averageCostPerCookie()), detail: "Across priced recipes", tone: "etsy" },
+    { label: "Needs Cleanup", value: needing.length, detail: "Recipes showing $0", tone: needing.length ? "danger" : "success" }
   ];
 
   document.getElementById("overview").innerHTML = cards.map(card => `
@@ -107,155 +160,50 @@ function renderOverview() {
     </article>
   `).join("");
 
-  const title = document.querySelector(".compact-dashboard-head h1");
-  if (title) title.textContent = highest ? `${highest.name}: ${money(recipeCostPerCookie(highest))} per cookie` : "Recipe costing is live.";
-}
-
-function renderAlerts() {
-  const alerts = [];
-  const products = dashboardData.products || [];
-  const priced = recipesWithCosts();
-  const needing = recipesNeedingCosts();
-  const generated = dashboardData.generatedAt ? new Date(dashboardData.generatedAt).toLocaleString() : "live";
-
-  alerts.push({ type: "success", text: `Google Sheet connected. ${products.length} recipes and ${(dashboardData.ingredients || []).length} ingredient costs loaded.` });
-  alerts.push({ type: "info", text: `Last backend refresh: ${generated}.` });
-
-  if (needing.length) {
-    alerts.push({ type: "warning", text: `${needing.length} recipes are returning $0 cost because their batch/amount-needed cells are still zero or ingredient names don't match.` });
-  }
-
-  const expensive = [...priced].sort((a, b) => recipeCostPerCookie(b) - recipeCostPerCookie(a))[0];
-  if (expensive) {
-    alerts.push({ type: "warning", text: `Highest cost cookie right now: ${expensive.name} at ${money(recipeCostPerCookie(expensive))} each / ${money(recipeCostPerDozen(expensive))} per dozen.` });
-  }
-
-  const cheap = [...priced].sort((a, b) => recipeCostPerCookie(a) - recipeCostPerCookie(b))[0];
-  if (cheap) {
-    alerts.push({ type: "success", text: `Lowest cost cookie right now: ${cheap.name} at ${money(recipeCostPerCookie(cheap))} each.` });
-  }
-
-  document.getElementById("alerts").innerHTML = alerts.map(alert => `
-    <div class="alert ${alert.type}">${alert.text}</div>
-  `).join("");
-}
-
-function renderOrders() {
-  const orders = dashboardData.orders || [];
-  if (!orders.length) {
-    document.getElementById("ordersTable").innerHTML = `
-      <tr>
-        <td colspan="9"><strong>No Square/Etsy orders are connected yet.</strong><span>This section is ready for Phase 2. Right now the live data is recipe costing from Google Sheets.</span></td>
-      </tr>
-    `;
-    return;
-  }
-
-  const rows = orders
-    .filter(order => activeFilter === "all" || order.platform === activeFilter || order.status === activeFilter)
-    .map(order => `
-      <tr>
-        <td><strong>${order.id}</strong><span>${order.pickupOrShip || ""}</span></td>
-        <td><span class="source-pill ${String(order.platform || "").toLowerCase()}">${order.platform || "Manual"}</span></td>
-        <td>${order.customer || ""}<span>${order.notes || ""}</span></td>
-        <td>${(order.items || []).map(item => `${item.qty}× ${item.name}`).join("<br>")}</td>
-        <td>${order.dueDate || ""}</td>
-        <td>${money(orderTotal(order))}</td>
-        <td>${money(orderCost(order))}</td>
-        <td>${money(orderProfit(order))}</td>
-        <td><span class="pill warning">${order.status || "New"}</span></td>
-      </tr>
-    `).join("");
-
-  document.getElementById("ordersTable").innerHTML = rows;
-}
-
-function orderTotal(order) {
-  return (order.items || []).reduce((sum, item) => sum + number(item.qty) * number(item.unitPrice), 0);
-}
-
-function orderCost(order) {
-  return (order.items || []).reduce((sum, item) => {
-    const product = (dashboardData.products || []).find(p => p.sku === item.sku || p.name === item.name);
-    return sum + (product ? recipeCostPerDozen(product) * number(item.qty) : 0);
-  }, 0);
-}
-
-function orderProfit(order) {
-  return orderTotal(order) - orderCost(order);
-}
-
-function renderProductionQueue() {
-  const products = [...(dashboardData.products || [])].sort((a, b) => recipeBatchCost(b) - recipeBatchCost(a));
-  document.getElementById("productionQueue").innerHTML = products.slice(0, 10).map(product => {
-    const cost = recipeBatchCost(product);
-    const statusClass = cost > 0 ? "success" : "warning";
-    return `
-      <div class="task-card">
-        <div>
-          <strong>${product.name}</strong>
-          <p>${number(product.batches) || 1} ${plural(number(product.batches) || 1, "batch", "batches")} • ${product.yieldLabel || "Yield missing"} • ${money(recipeCostPerDozen(product))}/dozen</p>
-        </div>
-        <span class="pill ${statusClass}">${cost > 0 ? money(cost) : "Needs cost"}</span>
-      </div>
-    `;
-  }).join("");
-}
-
-function forecastIngredients() {
-  const usage = {};
-  (dashboardData.products || []).forEach(product => {
-    (product.recipe || []).forEach(line => {
-      if (!number(line.amount)) return;
-      const key = `${line.ingredient}__${line.unit}`;
-      usage[key] = usage[key] || { ingredient: line.ingredient, unit: line.unit, amount: 0, cost: 0 };
-      usage[key].amount += number(line.amount);
-      usage[key].cost += number(line.ingredientCost);
-    });
-  });
-  return Object.values(usage).sort((a, b) => b.cost - a.cost);
-}
-
-function renderForecast() {
-  const forecast = forecastIngredients();
-  if (!forecast.length) {
-    document.getElementById("ingredientForecast").innerHTML = `<div class="alert warning">No planned ingredient usage yet. Update batch counts / amount needed cells in Google Sheets.</div>`;
-    return;
-  }
-  const max = Math.max(...forecast.map(item => item.cost), 1);
-  document.getElementById("ingredientForecast").innerHTML = forecast.slice(0, 12).map(item => `
-    <div class="bar-row">
-      <div><strong>${item.ingredient}</strong><span>${item.amount.toFixed(2)} ${item.unit} • ${money(item.cost)}</span></div>
-      <div class="bar-track"><span style="width:${Math.max(4, (item.cost / max) * 100)}%"></span></div>
-    </div>
-  `).join("");
+  document.getElementById("recipeCountPill").textContent = `${products.length} live recipes`;
+  document.getElementById("ingredientCountPill").textContent = `${ingredients.length} costs loaded`;
 }
 
 function renderRecipes() {
-  const sorted = [...(dashboardData.products || [])].sort((a, b) => recipeCostPerCookie(b) - recipeCostPerCookie(a));
-  document.getElementById("recipeCards").innerHTML = sorted.map(product => {
+  const products = [...(dashboardData.products || [])].sort((a, b) => a.name.localeCompare(b.name));
+  const container = document.getElementById("recipeCards");
+
+  if (!products.length) {
+    container.innerHTML = `<div class="empty-state full">No recipes loaded. The live Google Sheet backend did not return products.</div>`;
+    return;
+  }
+
+  container.innerHTML = products.map(product => {
     const batchCost = recipeBatchCost(product);
     const perCookie = recipeCostPerCookie(product);
     const perDozen = recipeCostPerDozen(product);
-    const needsWork = batchCost <= 0;
+    const zeros = recipesWithZeroLines(product);
+    const clean = batchCost > 0 && perCookie > 0;
+    const recipe = product.recipe || [];
+
     return `
-      <article class="recipe-card ${needsWork ? "needs-work" : ""}">
+      <article class="recipe-card ${clean ? "" : "needs-cleanup"}">
         <div class="recipe-top">
           <div>
-            <p class="eyebrow">${number(product.batches) || 1} ${plural(number(product.batches) || 1, "batch", "batches")}</p>
+            <p class="eyebrow">${number(product.batches) || 1} ${number(product.batches) === 1 ? "batch" : "batches"}</p>
             <h4>${product.name}</h4>
-            <span>${product.yieldLabel || "Yield missing"}</span>
+            <span>${recipeYield(product)} • ${recipe.length} ingredient lines</span>
           </div>
           <strong>${money(batchCost)}</strong>
         </div>
         <div class="mini-stats">
           <span>Cost / Cookie <b>${money(perCookie)}</b></span>
           <span>Cost / Dozen <b>${money(perDozen)}</b></span>
-          <span>Ingredient Lines <b>${(product.recipe || []).length}</b></span>
+          <span>Cleanup flags <b>${zeros.length}</b></span>
         </div>
         <details>
-          <summary>${needsWork ? "Needs batch/cost cleanup" : "Ingredient cost breakdown"}</summary>
-          ${(product.recipe || []).map(line => `<p>${line.ingredient}: ${line.amount || 0} ${line.unit || ""} — ${money(line.ingredientCost)}</p>`).join("")}
+          <summary>${clean ? "Ingredient breakdown" : "Needs batch/cost cleanup"}</summary>
+          ${recipe.map(line => `
+            <p>
+              <b>${line.ingredient}</b>
+              <span>${number(line.amount).toFixed(2)} ${line.unit || ""} • ${money(line.ingredientCost)}</span>
+            </p>
+          `).join("")}
         </details>
       </article>
     `;
@@ -263,9 +211,15 @@ function renderRecipes() {
 }
 
 function renderIngredients() {
-  const ingredients = [...(dashboardData.ingredients || [])].sort((a, b) => String(a.name).localeCompare(String(b.name)));
-  document.getElementById("lowStockCount").textContent = `${ingredients.length} costs loaded`;
-  document.getElementById("ingredientGrid").innerHTML = ingredients.map(item => `
+  const ingredients = [...(dashboardData.ingredients || [])].sort((a, b) => a.name.localeCompare(b.name));
+  const container = document.getElementById("ingredientGrid");
+
+  if (!ingredients.length) {
+    container.innerHTML = `<div class="empty-state full">No ingredient costs loaded.</div>`;
+    return;
+  }
+
+  container.innerHTML = ingredients.map(item => `
     <article class="inventory-card">
       <p>${item.name}</p>
       <strong>${money(item.costPerUnit)} / ${item.unit || item.recipeUnit || "unit"}</strong>
@@ -274,37 +228,59 @@ function renderIngredients() {
   `).join("");
 }
 
-function renderCustomers() {
-  const customers = dashboardData.customers || [];
-  document.getElementById("customerList").innerHTML = customers.length ? customers.map(customer => `
-    <div class="leader-row">
-      <div><strong>${customer.name}</strong><span>${customer.notes}</span></div>
-      <b>${money(customer.lifetimeValue)}</b>
-    </div>
-  `).join("") : `<div class="alert warning">Customer history starts when Square/Etsy orders are connected.</div>`;
-}
+function renderCleanup() {
+  const needing = recipesNeedingCosts();
+  const flagged = (dashboardData.products || [])
+    .map(product => ({ product, flags: recipesWithZeroLines(product).length }))
+    .filter(row => row.flags > 0)
+    .sort((a, b) => b.flags - a.flags);
 
-function renderProducts() {
-  const products = [...(dashboardData.products || [])].sort((a, b) => recipeCostPerDozen(b) - recipeCostPerDozen(a));
-  document.getElementById("productLeaderboard").innerHTML = products.slice(0, 10).map(product => `
+  const list = document.getElementById("cleanupList");
+  const rows = flagged.length ? flagged : needing.map(product => ({ product, flags: 0 }));
+
+  list.innerHTML = rows.length ? rows.map(({ product, flags }) => `
+    <div class="task-card">
+      <div>
+        <strong>${product.name}</strong>
+        <p>${flags} zero amount/cost lines • Batch cost ${money(recipeBatchCost(product))}</p>
+      </div>
+      <span class="pill ${recipeBatchCost(product) > 0 ? "warning" : "danger"}">${recipeBatchCost(product) > 0 ? "Review" : "$0"}</span>
+    </div>
+  `).join("") : `<div class="alert success">No obvious cleanup flags. Caleb can breathe.</div>`;
+
+  const priced = recipesWithCosts();
+  const highest = [...priced].sort((a, b) => recipeCostPerCookie(b) - recipeCostPerCookie(a))[0];
+  const lowest = [...priced].sort((a, b) => recipeCostPerCookie(a) - recipeCostPerCookie(b))[0];
+
+  document.getElementById("costExtremes").innerHTML = [
+    highest ? { title: "Most expensive", value: highest.name, note: `${money(recipeCostPerCookie(highest))}/cookie • ${money(recipeCostPerDozen(highest))}/dozen` } : null,
+    lowest ? { title: "Least expensive", value: lowest.name, note: `${money(recipeCostPerCookie(lowest))}/cookie • ${money(recipeCostPerDozen(lowest))}/dozen` } : null,
+    { title: "Priced recipes", value: `${priced.length} / ${(dashboardData.products || []).length}`, note: "Recipes with usable batch/cookie cost" },
+    { title: "Total batch cost", value: money(totalPlannedCost()), note: "Across all recipe cards" }
+  ].filter(Boolean).map(row => `
     <div class="leader-row">
-      <div><strong>${product.name}</strong><span>${product.yieldLabel} • ${number(product.batches) || 1} ${plural(number(product.batches) || 1, "batch", "batches")}</span></div>
-      <b>${money(recipeCostPerDozen(product))}/doz</b>
+      <div><strong>${row.title}</strong><span>${row.note}</span></div>
+      <b>${row.value}</b>
     </div>
   `).join("");
+}
+
+function renderOrderPlaceholder() {
+  document.getElementById("orderPlaceholder").innerHTML = `
+    <strong>Square + Etsy are not connected yet.</strong>
+    <p>That is okay. This version is designed to prove the recipe-cost backend first. Once Square/Etsy are connected, orders will map into these recipe SKUs and use the same cost-per-cookie data.</p>
+  `;
 }
 
 function renderReport() {
   const products = dashboardData.products || [];
   const priced = recipesWithCosts();
-  const missing = recipesNeedingCosts();
-  const highest = [...priced].sort((a, b) => recipeCostPerCookie(b) - recipeCostPerCookie(a))[0];
-  const lowest = [...priced].sort((a, b) => recipeCostPerCookie(a) - recipeCostPerCookie(b))[0];
+  const needing = recipesNeedingCosts();
   const cards = [
-    { title: "Most expensive", value: highest ? highest.name : "—", note: highest ? `${money(recipeCostPerCookie(highest))}/cookie • ${money(recipeCostPerDozen(highest))}/dozen` : "No priced recipes yet" },
-    { title: "Least expensive", value: lowest ? lowest.name : "—", note: lowest ? `${money(recipeCostPerCookie(lowest))}/cookie • ${money(recipeCostPerDozen(lowest))}/dozen` : "No priced recipes yet" },
-    { title: "Recipes with costs", value: `${priced.length} / ${products.length}`, note: "Pulled from the recipe workbook" },
-    { title: "Needs cleanup", value: missing.length, note: "Usually zero batch counts or unmatched ingredient names" }
+    { title: "Live source", value: dashboardData.source || "Google Sheets", note: dashboardData.generatedAt ? `Generated ${new Date(dashboardData.generatedAt).toLocaleString()}` : "Loaded now" },
+    { title: "Recipes showing $0", value: needing.length, note: "Usually batch count or amount-needed cells" },
+    { title: "Ingredient library", value: (dashboardData.ingredients || []).length, note: "Rows from MASTER LIST" },
+    { title: "Next backend step", value: "Add sell prices", note: "Then dashboard can show profit and margin" }
   ];
 
   document.getElementById("snackReport").innerHTML = cards.map(card => `
@@ -312,33 +288,27 @@ function renderReport() {
   `).join("");
 }
 
-function bindFilters() {
-  document.querySelectorAll(".filter").forEach(button => {
-    button.addEventListener("click", () => {
-      document.querySelectorAll(".filter").forEach(item => item.classList.remove("active"));
-      button.classList.add("active");
-      activeFilter = button.dataset.filter;
-      renderOrders();
-    });
-  });
+function renderAll() {
+  renderGoal();
+  renderOverview();
+  renderRecipes();
+  renderIngredients();
+  renderCleanup();
+  renderOrderPlaceholder();
+  renderReport();
 }
 
 async function init() {
-  await loadBackendData();
-  renderGoal();
-  renderOverview();
-  renderAlerts();
-  renderOrders();
-  renderProductionQueue();
-  renderForecast();
-  renderRecipes();
-  renderIngredients();
-  renderCustomers();
-  renderProducts();
-  renderReport();
-  bindFilters();
+  try {
+    await loadBackendData();
+    renderStatus(true);
+  } catch (error) {
+    console.error(error);
+    renderStatus(false, error.message);
+  }
+  renderAll();
 
-  document.getElementById("refreshButton")?.addEventListener("click", init);
+  document.getElementById("refreshButton")?.addEventListener("click", () => window.location.reload());
   document.getElementById("printTodayButton")?.addEventListener("click", () => window.print());
 }
 

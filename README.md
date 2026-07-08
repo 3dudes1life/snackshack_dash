@@ -1,37 +1,71 @@
-# C-Dawg's Snack Shack Command Center — Recipe First
+# C-Dawg's Snack Shack Command Center — Live Sheet Fix
 
-This version fixes the weird dashboard issue by matching the UI to the live Google Sheet data that is actually coming back from Apps Script.
+This ZIP fixes the broken/fallback dashboard problem.
 
-## What changed
+## What was wrong
 
-- Recipe costing is now the main dashboard story.
-- Overview cards show recipes loaded, ingredient costs loaded, planned cookies, planned cost, average cost per cookie, and recipes needing cleanup.
-- Recipe cards use the workbook fields already returned by the backend:
-  - `batches`
-  - `totalBatchCost`
-  - `costPerCookie`
-  - `costPerDozen`
-  - `yieldLabel`
-  - ingredient line costs
-- Ingredient section is now an ingredient cost library instead of fake inventory stock.
-- Caleb Queue now shows useful costing warnings instead of “no chaos” while orders are not connected.
-- Square/Etsy order hub stays in place but now clearly says Phase 2 until those APIs are wired.
+The GitHub dashboard still had old demo data with only 4 products:
+Chocolate Chip, Sugar Sprinkle, Molasses, and Cowboy Candy.
 
-## Live backend
+This version removes that silent fallback behavior. If the live Google Sheet backend fails, the dashboard now shows a clear backend error instead of pretending the 4 demo products are real.
 
-The dashboard is already pointed at the deployed Google Apps Script URL in `data/config.js`.
+## Files to upload to GitHub
 
-```js
-window.SNACKSHACK_API_URL = "https://script.google.com/macros/s/AKfycbx2t2eP2ZTpcwd6bp3L3bJJBqBdxitN2Bs_2kvGxW0h2_bljZd5_jU3wZQ3cPFjURxS0g/exec";
-```
-
-## Upload to GitHub
-
-Upload/replace these files in the repo:
+Replace the current files with these:
 
 - `index.html`
 - `src/app.js`
-- `src/styles-compact.css`
+- `src/styles.css`
 - `data/config.js`
+- `manifest.webmanifest`
+- `icon.svg`
 
-Then hard refresh the dashboard URL.
+Optional but recommended:
+
+- `backend/google-apps-script/Code.gs`
+
+## Current backend URL
+
+`data/config.js` already points to:
+
+https://script.google.com/macros/s/AKfycbx2t2eP2ZTpcwd6bp3L3bJJBqBdxitN2Bs_2kvGxW0h2_bljZd5_jU3wZQ3cPFjURxS0g/exec
+
+## Apps Script
+
+Your Apps Script should contain the code in:
+
+`backend/google-apps-script/Code.gs`
+
+After replacing Apps Script code:
+
+1. Save
+2. Deploy
+3. Manage deployments
+4. Edit pencil
+5. Version: New version
+6. Deploy
+
+## GitHub Pages cache fix
+
+`index.html` now loads all files with:
+
+`?v=8-live-sheet-fix`
+
+That forces Safari/Chrome/GitHub Pages to stop using stale old dashboard files.
+
+## Expected result
+
+The dashboard should show around:
+
+- 13 recipes loaded
+- 40+ ingredient costs loaded
+- Recipe cards for all cookie sheets
+- Batch cost
+- Cost per cookie
+- Cost per dozen
+- Cleanup queue for recipes showing $0
+
+## Next phase
+
+Add a price/sell-price tab so the dashboard can calculate true profit and margin.
+Right now it is intentionally focused on recipe cost first.

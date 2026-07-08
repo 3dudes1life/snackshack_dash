@@ -1,165 +1,171 @@
-/**
- * C-Dawg's Snack Shack Dashboard Backend
- * Deploy as Google Apps Script Web App: Execute as Me, Anyone with link.
- * Dashboard uses JSONP so GitHub Pages can read it without exposing tokens.
- *
- * Required Google Sheet tabs:
- * - Settings
- * - Ingredients
- * - Products
- * - Recipes
- * - Orders
- * - OrderItems
- * - Customers
- */
-
-const SPREADSHEET_ID = 'PASTE_GOOGLE_SHEET_ID_HERE';
+const SPREADSHEET_ID = "1rQnVZ7ZUJRQLYY3BMHlt7u_k4wYUcoE2sDhvSEwdwJw";
 
 function doGet(e) {
   try {
-    const data = buildDashboardData_();
+    const data = buildCdawgRecipeData_();
     const callback = e && e.parameter && e.parameter.callback;
     const json = JSON.stringify(data);
 
-    if (callback) {
-      return ContentService
-        .createTextOutput(`${callback}(${json});`)
-        .setMimeType(ContentService.MimeType.JAVASCRIPT);
-    }
-
     return ContentService
-      .createTextOutput(json)
-      .setMimeType(ContentService.MimeType.JSON);
+      .createTextOutput(callback ? `${callback}(${json});` : json)
+      .setMimeType(callback ? ContentService.MimeType.JAVASCRIPT : ContentService.MimeType.JSON);
   } catch (err) {
     const callback = e && e.parameter && e.parameter.callback;
-    const payload = JSON.stringify({ error: true, message: String(err) });
+    const payload = JSON.stringify({
+      error: true,
+      message: String(err),
+      stack: err && err.stack ? err.stack : ""
+    });
+
     return ContentService
       .createTextOutput(callback ? `${callback}(${payload});` : payload)
       .setMimeType(callback ? ContentService.MimeType.JAVASCRIPT : ContentService.MimeType.JSON);
   }
 }
 
-function buildDashboardData_() {
+function buildCdawgRecipeData_() {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const settings = keyValueSheet_(ss, 'Settings');
-  const ingredients = rows_(ss, 'Ingredients').map(row => ({
-    name: clean_(row.Name),
-    costPerUnit: number_(row.CostPerUnit),
-    unit: clean_(row.Unit),
-    stock: number_(row.Stock),
-    reorderAt: number_(row.ReorderAt),
-    shoppingUnit: clean_(row.ShoppingUnit)
-  })).filter(x => x.name);
+  const sheets = ss.getSheets();
 
-  const products = rows_(ss, 'Products').map(row => ({
-    sku: clean_(row.SKU),
-    name: clean_(row.Name),
-    category: clean_(row.Category),
-    salePrice: number_(row.SalePrice),
-    yieldLabel: clean_(row.YieldLabel),
-    batchYieldUnits: number_(row.BatchYieldUnits),
-    unitLabel: clean_(row.UnitLabel),
-    packagingCost: number_(row.PackagingCost),
-    recipe: []
-  })).filter(x => x.sku);
+  const masterSheet = sheets.find(sheet =>
+    sheet.getName().toLowerCase().includes("master")
+  );
 
-  const productMap = Object.fromEntries(products.map(p => [p.sku, p]));
-  rows_(ss, 'Recipes').forEach(row => {
-    const sku = clean_(row.ProductSKU);
-    if (!productMap[sku]) return;
-    productMap[sku].recipe.push({
-      ingredient: clean_(row.Ingredient),
-      amount: number_(row.Amount),
-      unit: clean_(row.Unit)
-    });
+  const ingredients = masterSheet ? parseMasterIngredients_(masterSheet) : [];
+
+  const recipeSheets = sheets.filter(sheet => {
+    const name = sheet.getName().toLowerCase();
+    return !name.includes("master") && !name.includes("sheet") && !name.includes("cost");
   });
 
-  const orders = rows_(ss, 'Orders').map(row => ({
-    id: clean_(row.OrderID),
-    platform: clean_(row.Platform),
-    customer: clean_(row.Customer),
-    dueDate: dateString_(row.DueDate),
-    pickupOrShip: clean_(row.PickupOrShip),
-    status: clean_(row.Status),
-    sourceUrl: clean_(row.SourceUrl),
-    notes: clean_(row.Notes),
-    items: []
-  })).filter(x => x.id);
-
-  const orderMap = Object.fromEntries(orders.map(o => [o.id, o]));
-  rows_(ss, 'OrderItems').forEach(row => {
-    const id = clean_(row.OrderID);
-    const sku = clean_(row.SKU);
-    const product = productMap[sku];
-    if (!orderMap[id]) return;
-    orderMap[id].items.push({
-      sku,
-      name: clean_(row.Name) || (product ? product.name : sku),
-      qty: number_(row.Qty),
-      unitPrice: number_(row.UnitPrice)
-    });
-  });
-
-  const customers = rows_(ss, 'Customers').map(row => ({
-    name: clean_(row.Name),
-    orders: number_(row.Orders),
-    lifetimeValue: number_(row.LifetimeValue),
-    notes: clean_(row.Notes)
-  })).filter(x => x.name);
+  const products = recipeSheets
+    .map(parseRecipeSheet_)
+    .filter(recipe => recipe && recipe.name && recipe.recipe.length);
 
   return {
-    goal: {
-      current: number_(settings.GoalCurrent || 0),
-      target: number_(settings.GoalTarget || 75),
-      label: settings.GoalLabel || 'Orders this month'
-    },
+    status: "success",
+    source: "Google Sheets",
+    generatedAt: new Date().toISOString(),
+    goal: { current: 18, target: 75, label: "Orders this month" },
     settings: {
-      businessName: settings.BusinessName || "C-Dawg's Snack Shack",
-      tagline: settings.Tagline || 'Cookies, Cowboy Candy & Island Vibes',
-      currency: settings.Currency || 'USD'
+      businessName: "C-Dawg's Snack Shack",
+      tagline: "Cookies • Treats • Sourdough • Jams",
+      currency: "USD"
     },
-    orders,
-    products,
     ingredients,
-    customers,
-    generatedAt: new Date().toISOString()
+    products,
+    orders: [],
+    customers: []
   };
 }
 
-function rows_(ss, sheetName) {
-  const sheet = ss.getSheetByName(sheetName);
-  if (!sheet) throw new Error(`Missing sheet tab: ${sheetName}`);
+function parseMasterIngredients_(sheet) {
   const values = sheet.getDataRange().getValues();
-  if (values.length < 2) return [];
-  const headers = values[0].map(h => String(h).trim());
-  return values.slice(1).filter(r => r.some(cell => cell !== '')).map(row => {
-    const obj = {};
-    headers.forEach((h, i) => obj[h] = row[i]);
-    return obj;
+  const ingredients = [];
+
+  values.forEach(row => {
+    const name = clean_(row[7]); // "Cost of Ingredients" column from current workbook
+    if (!name || name === "Cost of Ingredients") return;
+
+    ingredients.push({
+      name,
+      price: number_(row[8]),
+      packageSize: clean_(row[9]),
+      perSize: number_(row[10]),
+      packageUnit: clean_(row[11]),
+      recipeUnit: clean_(row[12]),
+      unitsPerSize: number_(row[13]),
+      costPerUnit: number_(row[14]),
+      unit: clean_(row[12]),
+      stock: 0,
+      reorderAt: 0,
+      shoppingUnit: clean_(row[9])
+    });
   });
+
+  return ingredients;
 }
 
-function keyValueSheet_(ss, sheetName) {
-  const out = {};
-  rows_(ss, sheetName).forEach(row => {
-    if (row.Key) out[String(row.Key).trim()] = row.Value;
-  });
-  return out;
+function parseRecipeSheet_(sheet) {
+  const values = sheet.getDataRange().getValues();
+  const name = sheet.getName();
+
+  let headerRowIndex = -1;
+  for (let i = 0; i < values.length; i++) {
+    const first = clean_(values[i][0]).toLowerCase();
+    const second = clean_(values[i][1]).toLowerCase();
+    if (first === "ingredients" && second.includes("base")) {
+      headerRowIndex = i;
+      break;
+    }
+  }
+  if (headerRowIndex === -1) return null;
+
+  const header = values[headerRowIndex];
+  const yieldCount = number_(header[6]);
+  const yieldUnit = clean_(header[7]) || "Cookies";
+
+  let batches = 1;
+  let totalBatchCost = 0;
+  let costPerCookie = 0;
+  const recipeLines = [];
+
+  for (let i = headerRowIndex + 1; i < values.length; i++) {
+    const row = values[i];
+
+    const ingredient = clean_(row[0]);
+    const baseAmount = row[1];
+    const unit = clean_(row[2]);
+    const amountNeeded = row[3];
+    const ingredientCost = row[4];
+    const label = clean_(row[5]).toLowerCase();
+
+    if (label === "batch") batches = number_(row[6]) || 1;
+    if (label === "total batch cost") totalBatchCost = number_(row[6]);
+    if (label === "cost per cookie") costPerCookie = number_(row[6]);
+
+    if (!ingredient || ingredient.toLowerCase() === "ingredients") continue;
+
+    recipeLines.push({
+      ingredient,
+      baseAmount: number_(baseAmount),
+      amount: number_(amountNeeded),
+      unit,
+      ingredientCost: number_(ingredientCost)
+    });
+  }
+
+  return {
+    sku: slug_(name),
+    name,
+    category: "Cookies",
+    salePrice: 0,
+    yieldLabel: `${yieldCount} ${yieldUnit}`,
+    batchYieldUnits: yieldCount,
+    unitLabel: yieldUnit,
+    batches,
+    totalBatchCost,
+    costPerCookie,
+    costPerDozen: costPerCookie * 12,
+    packagingCost: 0,
+    recipe: recipeLines
+  };
 }
 
 function clean_(value) {
-  return value === null || value === undefined ? '' : String(value).trim();
+  return value === null || value === undefined ? "" : String(value).trim();
 }
 
 function number_(value) {
-  if (value === null || value === undefined || value === '') return 0;
-  return Number(String(value).replace(/[$,]/g, '')) || 0;
+  if (value === null || value === undefined || value === "") return 0;
+  if (typeof value === "number") return value;
+  const cleaned = String(value).replace(/[$,]/g, "").trim();
+  return Number(cleaned) || 0;
 }
 
-function dateString_(value) {
-  if (!value) return '';
-  if (Object.prototype.toString.call(value) === '[object Date]') {
-    return Utilities.formatDate(value, Session.getScriptTimeZone(), 'yyyy-MM-dd');
-  }
-  return String(value).slice(0, 10);
+function slug_(value) {
+  return clean_(value)
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 }
