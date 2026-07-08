@@ -1,0 +1,21 @@
+{
+  "version": "v91-fixed-mobile-header",
+  "base": "/mnt/data/cdawgs-snackshack-commandcenter-brain-8-v90-real-mobile.zip",
+  "github_checked": "Live GitHub index is v90 mobile and loads src/mobile.css.",
+  "changed": [
+    "Mobile/tablet sidebar becomes fixed instead of sticky",
+    "JS measures header height and sets --mobile-header-height",
+    "App content gets top padding so it does not hide under header",
+    "Scroll padding accounts for fixed header",
+    "Applied to src/mobile.css, src/styles.css, and inline fallback",
+    "Bottom-right marker now says v91 fixed header"
+  ],
+  "kept": [
+    "Brain 8.0",
+    "Square + Google Sheets live sync",
+    "Order/Invoice Hub",
+    "Production Demand",
+    "Send Demand to Planner",
+    "v90 real mobile layout"
+  ]
+}

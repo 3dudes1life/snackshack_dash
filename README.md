@@ -415,3 +415,16 @@ Adds:
 - Larger tap targets.
 
 Brain 8.0 app logic is preserved.
+
+
+## v91 Fixed Mobile Header
+
+Final mobile patch on top of v90 Real Mobile.
+
+Fix:
+- Phone/iPad header now stays fixed at the top while scrolling.
+- JS measures the actual header height and adds matching top padding so content does not slide underneath it.
+- Patch is included in `src/mobile.css`, `src/styles.css`, and inline CSS fallback.
+- Bottom-right deployment marker changes to `v91 fixed header`.
+
+Brain 8.0 logic is preserved.

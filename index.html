@@ -8,8 +8,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="./src/styles.css?v=90-real-mobile">
-<link rel="stylesheet" href="./src/mobile.css?v=90-real-mobile">
+<link rel="stylesheet" href="./src/styles.css?v=91-fixed-mobile-header">
+<link rel="stylesheet" href="./src/mobile.css?v=91-fixed-mobile-header">
 
 <style id="emergency-dashboard-css">
 :root{
@@ -1806,6 +1806,67 @@ body::after {
 }
 
 </style>
+<style id="v91-fixed-header-css">
+
+/* =========================================================
+   v91 FIXED MOBILE HEADER
+   Keeps app header pinned while phone/iPad scrolls.
+   ========================================================= */
+@media (max-width: 1180px) {
+  html,
+  body {
+    scroll-padding-top: calc(var(--mobile-header-height, 132px) + 14px) !important;
+  }
+
+  .app-shell {
+    padding-top: calc(var(--mobile-header-height, 132px) + 14px) !important;
+  }
+
+  .sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    margin: 0 !important;
+    z-index: 99999 !important;
+    border-radius: 0 0 24px 24px !important;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    will-change: transform;
+    max-height: min(42vh, 190px) !important;
+  }
+
+  .side-nav {
+    max-height: 48px !important;
+  }
+
+  .content {
+    position: relative !important;
+    z-index: 1 !important;
+  }
+
+  body::after {
+    content: "v91 fixed header" !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-shell {
+    padding-top: calc(var(--mobile-header-height, 140px) + 12px) !important;
+  }
+
+  .sidebar {
+    max-height: min(38vh, 178px) !important;
+  }
+
+  .side-nav {
+    max-height: 46px !important;
+  }
+}
+
+</style>
 </head>
 <body>
 <div class="app-shell">
@@ -1980,8 +2041,8 @@ body::after {
   </main>
 </div>
 
-<script src="data/recipe-library.js?v=90-real-mobile"></script>
-<script src="data/config.js?v=90-real-mobile"></script>
-<script src="src/app.js?v=90-real-mobile"></script>
+<script src="data/recipe-library.js?v=91-fixed-mobile-header"></script>
+<script src="data/config.js?v=91-fixed-mobile-header"></script>
+<script src="src/app.js?v=91-fixed-mobile-header"></script>
 </body>
 </html>

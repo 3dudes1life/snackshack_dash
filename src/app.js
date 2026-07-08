@@ -866,3 +866,20 @@ function cdawgMobileViewportVars() {
 cdawgMobileViewportVars();
 window.addEventListener("resize", cdawgMobileViewportVars);
 window.addEventListener("orientationchange", () => setTimeout(cdawgMobileViewportVars, 250));
+
+
+/* v91 fixed mobile header spacing */
+function cdawgUpdateMobileHeaderHeight() {
+  const sidebar = document.querySelector(".sidebar");
+  if (!sidebar) return;
+  const height = Math.ceil(sidebar.getBoundingClientRect().height || 0);
+  if (height > 0) {
+    document.documentElement.style.setProperty("--mobile-header-height", `${height}px`);
+  }
+}
+cdawgUpdateMobileHeaderHeight();
+window.addEventListener("load", cdawgUpdateMobileHeaderHeight);
+window.addEventListener("resize", cdawgUpdateMobileHeaderHeight);
+window.addEventListener("orientationchange", () => setTimeout(cdawgUpdateMobileHeaderHeight, 300));
+setTimeout(cdawgUpdateMobileHeaderHeight, 500);
+setTimeout(cdawgUpdateMobileHeaderHeight, 1500);
