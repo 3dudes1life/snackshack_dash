@@ -5,19 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 <title>C-Dawg's Snack Shack Command Center</title>
 <meta name="theme-color" content="#f7f1df"/>
-<link rel="manifest" href="manifest.webmanifest?v=25-brain-6"/>
-<link rel="icon" href="icon.svg?v=25-brain-6" type="image/svg+xml"/>
-<link rel="apple-touch-icon" href="icon.svg?v=25-brain-6"/>
+<link rel="manifest" href="manifest.webmanifest?v=26-brain-6-order-hub"/>
+<link rel="icon" href="icon.svg?v=26-brain-6-order-hub" type="image/svg+xml"/>
+<link rel="apple-touch-icon" href="icon.svg?v=26-brain-6-order-hub"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="src/styles.css?v=25-brain-6"/>
+<link rel="stylesheet" href="src/styles.css?v=26-brain-6-order-hub"/>
 </head>
 <body>
 <div class="app-shell">
   <aside class="sidebar">
     <a class="brand" href="#top">
-      <img src="icon.svg?v=25-brain-6" alt="C-Dawg's"/>
+      <img src="icon.svg?v=26-brain-6-order-hub" alt="C-Dawg's"/>
       <span>C-Dawg's</span>
     </a>
     <nav class="side-nav">
@@ -49,7 +49,7 @@
         <div>
           <p class="eyebrow">Snack IQ 6.0 Brain</p>
           <h2>Bakery Manager Brain 6.0</h2>
-          <p class="muted">Bakery operating brain: Corporate DZ vs Square Retail pricing, margins, ROI, production batches, Smart Prep, and Square-ready logic.</p>
+          <p class="muted">Bakery operating brain: Square Order Hub, Corporate DZ vs Square Retail pricing, margins, ROI, production batches, Smart Prep, and live order logic.</p>
         </div>
         <button id="brainButton" class="print-btn">Run Brain 6.0</button>
       </div>
@@ -57,6 +57,42 @@
       <div id="brainCards" class="brain-grid"></div>
       <div id="shoppingList" class="shopping-list"></div>
     </section>
+
+
+    <section id="orders" class="panel order-hub-panel">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">Square</p>
+          <h2>Order Hub</h2>
+          <p class="muted">Pending/open Square orders, sales totals, and production demand from live order data.</p>
+        </div>
+        <span class="count-pill" id="orderCountPill">0 orders</span>
+      </div>
+
+      <div id="squareStatus" class="square-status"></div>
+
+      <div id="orderSummary" class="order-summary"></div>
+
+      <div class="order-layout">
+        <section class="order-column">
+          <div class="subhead">
+            <h3>Pending / Open Orders</h3>
+            <span id="openOrderPill">0 open</span>
+          </div>
+          <div id="openOrders" class="order-list"></div>
+        </section>
+
+        <section class="order-column">
+          <div class="subhead">
+            <h3>Production Demand</h3>
+            <span id="demandPill">0 items</span>
+          </div>
+          <div id="orderDemand" class="demand-list"></div>
+        </section>
+      </div>
+    </section>
+
+
 
 
     <section id="overview" class="metrics-grid"></section>
@@ -137,8 +173,8 @@
   </main>
 </div>
 
-<script src="data/recipe-library.js?v=25-brain-6"></script>
-<script src="data/config.js?v=25-brain-6"></script>
-<script src="src/app.js?v=25-brain-6"></script>
+<script src="data/recipe-library.js?v=26-brain-6-order-hub"></script>
+<script src="data/config.js?v=26-brain-6-order-hub"></script>
+<script src="src/app.js?v=26-brain-6-order-hub"></script>
 </body>
 </html>

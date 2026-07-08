@@ -261,3 +261,31 @@ Included:
 
 Recommended upload:
 Replace the entire GitHub Pages folder contents with this ZIP contents.
+
+
+## v26 Brain 6.0 Order Hub
+
+Adds Square order handling to the GitHub dashboard.
+
+### New Order Hub
+- Shows Square connection status.
+- Shows open/pending Square orders.
+- Shows open revenue.
+- Shows 30-day Square order total.
+- Shows production demand from pending/open Square line items.
+- Attempts to match Square line items to recipe/product names.
+- Flags unmatched Square items so aliases can be cleaned up.
+
+### Brain 6.0 updates
+- Adds open Square orders into AI recommendations.
+- Adds top order demand into AI recommendations.
+- Keeps Corporate DZ vs Square Retail pricing separate.
+- Keeps Kitchen Recipe Workspace batches separate from Production Planner batches.
+- Smart Prep still uses only Production Planner batches.
+
+### Backend
+A reference Apps Script file is included at:
+
+`backend/google-apps-script/Code.gs`
+
+The Square token must stay in Apps Script Script Properties, never in GitHub.

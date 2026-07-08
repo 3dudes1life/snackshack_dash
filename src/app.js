@@ -47,7 +47,7 @@ const MANUAL_MATCHES={
   monster:["monster","monstercookies","monstercookie"]
 };
 
-let dashboardData={products:[],ingredients:[],orders:[],customers:[]};
+let dashboardData={products:[],ingredients:[],orders:[],customers:[],squareCatalog:[],squareInventory:[],squareStatus:'not_connected',squareMessage:''};
 const bakedRecipes=window.CDAWG_RECIPE_LIBRARY||[];
 let selectedRecipeKey="";
 
@@ -192,7 +192,13 @@ async function loadBackendData(){
   if(!live||live.error) throw new Error(live?.message||"Backend returned an error.");
   dashboardData={...dashboardData,...live,
     products:Array.isArray(live.products)?live.products:[],
-    ingredients:Array.isArray(live.ingredients)?live.ingredients:[]
+    ingredients:Array.isArray(live.ingredients)?live.ingredients:[],
+    orders:Array.isArray(live.orders)?live.orders:[],
+    customers:Array.isArray(live.customers)?live.customers:[],
+    squareCatalog:Array.isArray(live.squareCatalog)?live.squareCatalog:[],
+    squareInventory:Array.isArray(live.squareInventory)?live.squareInventory:[],
+    squareStatus:live.squareStatus||"unknown",
+    squareMessage:live.squareMessage||""
   };
 }
 
@@ -600,6 +606,7 @@ function renderCostCards(){
 function renderPricing(){
   const all=mergedRecipes();
   const planned=all.filter(r=>selectedBatches(r)>0);
+  const orderSummary=squareOrderSummary();
   const rows=(planned.length?planned:all).map(r=>{
     const corpRev=revenueForMode(r,"corporate"), sqRev=revenueForMode(r,"square"), eachRev=revenueForMode(r,"squareRetailEach");
     const target=getTargetMargin(r);
@@ -678,6 +685,183 @@ function renderCleanup(){
     ["Projected profit",money(all.reduce((s,r)=>s+estimatedProfit(r),0)),"Using current sell prices"]
   ].filter(Boolean).map(x=>`<div class="list-row"><div><strong>${x[0]}</strong><span>${x[2]}</span></div><b>${x[1]}</b></div>`).join("");
 }
+
+/* ---------------- Brain 6.0 Order Hub ---------------- */
+
+function orderStatus(order){
+  return String(order.status || order.state || "OPEN").toUpperCase();
+}
+function isOpenOrder(order){
+  const status=orderStatus(order);
+  return !["COMPLETED","CANCELED","CANCELLED","REFUNDED","FAILED"].includes(status);
+}
+function orderDate(order){
+  return order.createdAt || order.created_at || order.updatedAt || order.updated_at || "";
+}
+function formatDateShort(value){
+  if(!value) return "";
+  const d=new Date(value);
+  if(isNaN(d.getTime())) return "";
+  return d.toLocaleDateString(undefined,{month:"short",day:"numeric"})+" "+d.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"});
+}
+function orderTotal(order){
+  return number(order.total || order.totalMoney || order.amount || order.grandTotal || 0);
+}
+function orderItems(order){
+  const items=order.items || order.lineItems || order.line_items || [];
+  return items.map(item=>({
+    name:item.name || item.title || item.variationName || item.variation_name || "Unknown item",
+    quantity:number(item.quantity || item.qty || 1) || 1,
+    total:number(item.total || item.amount || item.totalMoney || 0),
+    variationName:item.variationName || item.variation_name || "",
+    catalogObjectId:item.catalogObjectId || item.catalog_object_id || "",
+    raw:item
+  }));
+}
+function allSquareOrders(){
+  return Array.isArray(dashboardData.orders) ? dashboardData.orders : [];
+}
+function openSquareOrders(){
+  return allSquareOrders().filter(isOpenOrder);
+}
+function completedSquareOrders(){
+  return allSquareOrders().filter(o=>orderStatus(o)==="COMPLETED");
+}
+function matchRecipeFromOrderItem(item){
+  const fake={name:item.name, aliases:[item.name,item.variationName].filter(Boolean)};
+  const p=findCostProduct(fake);
+  if(p){
+    const recipe=mergedRecipes().find(r=>r.costProduct===p || norm(r.costProduct?.name)===norm(p.name));
+    if(recipe) return recipe;
+  }
+
+  let best=null, bestScore=0;
+  mergedRecipes().forEach(r=>{
+    const names=[r.name,...(r.aliases||[])];
+    names.forEach(name=>{
+      const score=tokenScore(item.name,name);
+      if(score>bestScore){bestScore=score;best=r;}
+    });
+  });
+  return bestScore>=0.42 ? best : null;
+}
+function buildOrderDemand(){
+  const rows={};
+  openSquareOrders().forEach(order=>{
+    orderItems(order).forEach(item=>{
+      const recipe=matchRecipeFromOrderItem(item);
+      const key=recipe ? recipe.key : norm(item.name);
+      if(!rows[key]){
+        rows[key]={
+          key,
+          recipe,
+          name:recipe ? recipe.name : item.name,
+          quantity:0,
+          revenue:0,
+          orders:new Set(),
+          unmatched:!recipe
+        };
+      }
+      rows[key].quantity += item.quantity;
+      rows[key].revenue += item.total;
+      rows[key].orders.add(order.id || order.orderId || order.name || "Square");
+    });
+  });
+  return Object.values(rows)
+    .map(row=>({...row, orderCount:row.orders.size}))
+    .sort((a,b)=>b.quantity-a.quantity || b.revenue-a.revenue);
+}
+function squareOrderSummary(){
+  const orders=allSquareOrders();
+  const open=openSquareOrders();
+  const completed=completedSquareOrders();
+  const openRevenue=open.reduce((s,o)=>s+orderTotal(o),0);
+  const totalRevenue=orders.reduce((s,o)=>s+orderTotal(o),0);
+  const demand=buildOrderDemand();
+  return {orders,open,completed,openRevenue,totalRevenue,demand};
+}
+function renderOrderHub(){
+  const summary=squareOrderSummary();
+  const status=String(dashboardData.squareStatus || (summary.orders.length ? "connected" : "not_connected"));
+  const message=dashboardData.squareMessage || (summary.orders.length ? "Square orders loaded." : "No Square orders returned yet.");
+
+  const orderCountPill=document.getElementById("orderCountPill");
+  if(orderCountPill) orderCountPill.textContent=`${summary.orders.length} orders`;
+
+  const squareStatus=document.getElementById("squareStatus");
+  if(squareStatus) {
+    squareStatus.innerHTML=`
+      <div class="status-dot ${status}"></div>
+      <div>
+        <b>Square ${status.replace(/_/g," ")}</b>
+        <span>${message}</span>
+      </div>
+      <small>${dashboardData.squareCatalog?.length||0} catalog records</small>
+    `;
+  }
+
+  const orderSummary=document.getElementById("orderSummary");
+  if(orderSummary){
+    orderSummary.innerHTML=[
+      ["Open Orders",summary.open.length,"Pending / active"],
+      ["Open Revenue",money(summary.openRevenue),"Not completed yet"],
+      ["30-Day Orders",summary.orders.length,"Returned by backend"],
+      ["30-Day Sales",money(summary.totalRevenue),"Square order total"],
+      ["Demand Groups",summary.demand.length,"Matched line items"],
+      ["Catalog Items",dashboardData.squareCatalog?.length||0,"Square retail layer"]
+    ].map(([label,value,detail])=>`
+      <article>
+        <span>${label}</span>
+        <strong>${value}</strong>
+        <small>${detail}</small>
+      </article>
+    `).join("");
+  }
+
+  const openPill=document.getElementById("openOrderPill");
+  if(openPill) openPill.textContent=`${summary.open.length} open`;
+
+  const openOrders=document.getElementById("openOrders");
+  if(openOrders){
+    openOrders.innerHTML=summary.open.length ? summary.open.slice(0,12).map(order=>{
+      const items=orderItems(order);
+      return `
+        <article class="order-card">
+          <div class="order-card-top">
+            <div>
+              <b>${order.customer || "Square Customer"}</b>
+              <span>${formatDateShort(orderDate(order)) || "Date pending"}</span>
+            </div>
+            <strong>${money(orderTotal(order))}</strong>
+          </div>
+          <p><em>${orderStatus(order)}</em> <small>${order.id || ""}</small></p>
+          <ul>${items.map(item=>`<li><span>${item.quantity}× ${item.name}</span><b>${money(item.total)}</b></li>`).join("")}</ul>
+        </article>`;
+    }).join("") : `<div class="empty-state">No pending/open Square orders right now.</div>`;
+  }
+
+  const demandPill=document.getElementById("demandPill");
+  if(demandPill) demandPill.textContent=`${summary.demand.reduce((s,r)=>s+r.quantity,0)} items`;
+
+  const demand=document.getElementById("orderDemand");
+  if(demand){
+    demand.innerHTML=summary.demand.length ? summary.demand.map(row=>{
+      const yieldOne=row.recipe ? yieldPerSingleBatch(row.recipe) : 0;
+      const batches=yieldOne ? Math.ceil(row.quantity/yieldOne) : 0;
+      return `
+        <article class="demand-card ${row.unmatched?"unmatched":""}">
+          <div>
+            <b>${row.name}</b>
+            <span>${row.quantity} ordered across ${row.orderCount} order${row.orderCount===1?"":"s"}</span>
+          </div>
+          <strong>${row.unmatched ? "Match needed" : `${batches} batch${batches===1?"":"es"}`}</strong>
+          <small>${row.unmatched ? "Add alias or matching recipe/product name" : `Yield ${Math.round(yieldOne)} each batch`}</small>
+        </article>`;
+    }).join("") : `<div class="empty-state">No production demand yet.</div>`;
+  }
+}
+
+
 function percent(value){
   if(!isFinite(value)) return "0%";
   return `${value.toFixed(1).replace(/\.0$/,"")}%`;
@@ -685,6 +869,7 @@ function percent(value){
 function buildBrain(){
   const all=mergedRecipes();
   const planned=all.filter(r=>selectedBatches(r)>0);
+  const orderSummary=squareOrderSummary();
   const productionCost=all.reduce((s,r)=>s+batchCostForRecipe(r),0);
   const activeRevenue=all.reduce((s,r)=>s+estimatedRevenue(r),0);
   const corpRevenue=all.reduce((s,r)=>s+revenueForMode(r,"corporate"),0);
@@ -726,6 +911,27 @@ function buildBrain(){
   })[0];
 
   const recs=[];
+  if(orderSummary.open.length){
+    recs.push({
+      type:"success",
+      title:"Open Square orders",
+      text:`${orderSummary.open.length} open Square order${orderSummary.open.length===1?"":"s"} worth ${money(orderSummary.openRevenue)} are waiting in Order Hub.`
+    });
+  } else {
+    recs.push({
+      type:"money",
+      title:"Order Hub ready",
+      text:"No open Square orders right now. When pending orders appear, they will show above recipes and feed production demand."
+    });
+  }
+  if(orderSummary.demand.length){
+    const topDemand=orderSummary.demand[0];
+    recs.push({
+      type: topDemand.unmatched ? "warning" : "success",
+      title:"Top order demand",
+      text: topDemand.unmatched ? `${topDemand.name} needs a recipe match.` : `${topDemand.name} is the top open-order demand at ${topDemand.quantity} item${topDemand.quantity===1?"":"s"}.`
+    });
+  }
   if(!planned.length){
     recs.push({type:"warning",title:"No production selected",text:"Set Production Planner batches above 0 to activate dual-pricing margin math."});
   }
@@ -777,6 +983,7 @@ function buildBrain(){
 function renderBrain(){
   const brain=buildBrain();
   document.getElementById("brainSummary").innerHTML=`
+    <article><span>Open Orders</span><strong>${squareOrderSummary().open.length}</strong><small>${money(squareOrderSummary().openRevenue)} pending</small></article>
     <article><span>Cost</span><strong>${money(brain.productionCost)}</strong><small>planner batches</small></article>
     <article><span>Active Revenue</span><strong>${money(brain.activeRevenue)}</strong><small>selected pricing modes</small></article>
     <article><span>Active Profit</span><strong>${money(brain.activeProfit)}</strong><small>projected net</small></article>
@@ -821,6 +1028,7 @@ function renderAll(){
   renderIngredients();
   renderCleanup();
   renderBrain();
+  renderOrderHub();
   bindControls();
 }
 async function init(){
