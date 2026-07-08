@@ -1,71 +1,30 @@
-# C-Dawg's Snack Shack Command Center — Live Sheet Fix
+# C-Dawg's Snack Shack Recipe Command Center — Full Recipe Library
 
-This ZIP fixes the broken/fallback dashboard problem.
+## What this fixes
 
-## What was wrong
+- No more old four-product demo showing by accident.
+- Full recipe library is included in `data/recipes.js`.
+- Cook Mode has a scrollable recipe list and a scrollable instruction panel.
+- Recipe Cost area is a horizontal scroll lane.
+- Ingredient costs are smaller/cuter chips instead of giant accounting cards.
+- Cache-busted with `v=10-cute-full-recipes`.
 
-The GitHub dashboard still had old demo data with only 4 products:
-Chocolate Chip, Sugar Sprinkle, Molasses, and Cowboy Candy.
+## Replace in GitHub
 
-This version removes that silent fallback behavior. If the live Google Sheet backend fails, the dashboard now shows a clear backend error instead of pretending the 4 demo products are real.
-
-## Files to upload to GitHub
-
-Replace the current files with these:
+Upload these files/folders into `3dudes1life/snackshack_dash`:
 
 - `index.html`
+- `data/config.js`
+- `data/recipes.js`
 - `src/app.js`
 - `src/styles.css`
-- `data/config.js`
-- `manifest.webmanifest`
 - `icon.svg`
+- `manifest.webmanifest`
 
-Optional but recommended:
+## Recipes included
 
-- `backend/google-apps-script/Code.gs`
+Chocolate Chip, Brown Butter Chocolate Chip, Oatmeal Raisin, White Chocolate Macadamia Nut, Double Chocolate Chip, Soft Ginger Molasses, Soft Sprinkle, Pumpkin Snickerdoodle, Green Mint Chocolate Chip, Peanut Butter, Red Velvet, Thumbprint, Monster, Nanny Pound Cake, Blackberry Jam, Rice Krispie Treats.
 
-## Current backend URL
+## Notes
 
-`data/config.js` already points to:
-
-https://script.google.com/macros/s/AKfycbx2t2eP2ZTpcwd6bp3L3bJJBqBdxitN2Bs_2kvGxW0h2_bljZd5_jU3wZQ3cPFjURxS0g/exec
-
-## Apps Script
-
-Your Apps Script should contain the code in:
-
-`backend/google-apps-script/Code.gs`
-
-After replacing Apps Script code:
-
-1. Save
-2. Deploy
-3. Manage deployments
-4. Edit pencil
-5. Version: New version
-6. Deploy
-
-## GitHub Pages cache fix
-
-`index.html` now loads all files with:
-
-`?v=8-live-sheet-fix`
-
-That forces Safari/Chrome/GitHub Pages to stop using stale old dashboard files.
-
-## Expected result
-
-The dashboard should show around:
-
-- 13 recipes loaded
-- 40+ ingredient costs loaded
-- Recipe cards for all cookie sheets
-- Batch cost
-- Cost per cookie
-- Cost per dozen
-- Cleanup queue for recipes showing $0
-
-## Next phase
-
-Add a price/sell-price tab so the dashboard can calculate true profit and margin.
-Right now it is intentionally focused on recipe cost first.
+Costs are estimates using the master cost library. Some hand-written recipe edits were interpreted from the uploaded photos and may need Caleb's final review.
