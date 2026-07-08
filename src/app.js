@@ -54,9 +54,12 @@ let selectedRecipeKey="";
 const productionBatchState=loadProductionBatchState();
 const kitchenBatchState=loadKitchenBatchState();
 const priceState=loadPriceState();
+const pricingModeState=loadPricingModeState();
 
-const DEFAULT_SELL_PRICE_PER_DOZEN = 18;
-const DEFAULT_SELL_PRICE_EACH = 2;
+const DEFAULT_CORPORATE_DZ_PRICE = 36;
+const DEFAULT_SQUARE_DZ_PRICE = 48;
+const DEFAULT_SQUARE_EACH_PRICE = 4;
+const DEFAULT_TARGET_MARGIN = 65;
 
 function loadProductionBatchState(){
   try {
@@ -75,9 +78,13 @@ function saveKitchenBatchState(){
   localStorage.setItem("cdawgKitchenBatchState", JSON.stringify(kitchenBatchState));
 }
 function loadPriceState(){
-  try{return JSON.parse(localStorage.getItem("cdawgPriceState")||"{}")}catch(e){return{}}
+  try{return JSON.parse(localStorage.getItem("cdawgDualPriceState")||localStorage.getItem("cdawgPriceState")||"{}")}catch(e){return{}}
 }
-function savePriceState(){localStorage.setItem("cdawgPriceState",JSON.stringify(priceState));}
+function savePriceState(){localStorage.setItem("cdawgDualPriceState",JSON.stringify(priceState));}
+function loadPricingModeState(){
+  try{return JSON.parse(localStorage.getItem("cdawgPricingModeState")||"{}")}catch(e){return{}}
+}
+function savePricingModeState(){localStorage.setItem("cdawgPricingModeState",JSON.stringify(pricingModeState));}
 
 function hasOwn(obj,key){return Object.prototype.hasOwnProperty.call(obj,key);}
 function getProductionBatch(key,fallback=0){
@@ -96,16 +103,74 @@ function setKitchenBatch(key,value){
   kitchenBatchState[key]=Math.max(1,number(value));
   saveKitchenBatchState();
 }
+function priceRecord(r){
+  if(!priceState[r.key]) {
+    priceState[r.key] = {
+      corporateDz: DEFAULT_CORPORATE_DZ_PRICE,
+      squareDz: DEFAULT_SQUARE_DZ_PRICE,
+      squareEach: DEFAULT_SQUARE_EACH_PRICE,
+      targetMargin: DEFAULT_TARGET_MARGIN
+    };
+  }
+  return priceState[r.key];
+}
+function pricingMode(r){
+  return pricingModeState[r.key] || "corporate";
+}
+function setPricingMode(key,mode){
+  pricingModeState[key]=mode;
+  savePricingModeState();
+}
+function setPriceField(key,field,value){
+  if(!priceState[key]) priceState[key]={};
+  priceState[key][field]=Math.max(0,number(value));
+  savePriceState();
+}
+function getCorporateDzPrice(r){return number(priceRecord(r).corporateDz)||0;}
+function getSquareDzPrice(r){return number(priceRecord(r).squareDz)||0;}
+function getSquareEachPrice(r){return number(priceRecord(r).squareEach)||0;}
+function getTargetMargin(r){return number(priceRecord(r).targetMargin)||DEFAULT_TARGET_MARGIN;}
+function getActiveDzPrice(r){
+  const mode=pricingMode(r);
+  if(mode==="square") return getSquareDzPrice(r);
+  return getCorporateDzPrice(r);
+}
 function getSellPrice(r){
-  const stored=number(priceState[r.key]);
-  if(stored>0) return stored;
-  const yieldNum=extractYieldNumber(r.costProduct?.yieldLabel||r.yield);
-  if(yieldNum>=6) return DEFAULT_SELL_PRICE_PER_DOZEN;
-  return DEFAULT_SELL_PRICE_EACH;
+  return getActiveDzPrice(r);
 }
 function setSellPrice(key,value){
-  priceState[key]=Math.max(0,number(value));
+  if(!priceState[key]) priceState[key]={};
+  priceState[key].corporateDz=Math.max(0,number(value));
   savePriceState();
+}
+function revenueForMode(r,mode){
+  const y=productionYield(r);
+  if(y<=0) return 0;
+  if(unitLabel(r)==="jars" || unitLabel(r)==="pan") {
+    return (mode==="square" ? getSquareDzPrice(r) : getCorporateDzPrice(r)) * selectedBatches(r);
+  }
+  if(mode==="squareRetailEach") return y * getSquareEachPrice(r);
+  const dzPrice = mode==="square" ? getSquareDzPrice(r) : getCorporateDzPrice(r);
+  return (y/12) * dzPrice;
+}
+function profitForMode(r,mode){return revenueForMode(r,mode)-batchCostForRecipe(r);}
+function marginForMode(r,mode){
+  const rev=revenueForMode(r,mode);
+  return rev>0 ? (profitForMode(r,mode)/rev)*100 : 0;
+}
+function suggestedDzPriceForTarget(r,targetMargin=null){
+  const target=(targetMargin ?? getTargetMargin(r))/100;
+  const costPerDz=costDozen(r);
+  if(costPerDz<=0 || target>=.98) return 0;
+  return costPerDz/(1-target);
+}
+function bestPricingChannel(r){
+  const options=[
+    ["Corporate DZ", marginForMode(r,"corporate"), revenueForMode(r,"corporate"), profitForMode(r,"corporate")],
+    ["Square DZ", marginForMode(r,"square"), revenueForMode(r,"square"), profitForMode(r,"square")],
+    ["Square Each", marginForMode(r,"squareRetailEach"), revenueForMode(r,"squareRetailEach"), profitForMode(r,"squareRetailEach")]
+  ].filter(x=>x[2]>0);
+  return options.sort((a,b)=>b[3]-a[3])[0] || ["No price",0,0,0];
 }
 
 function jsonp(url){
@@ -247,10 +312,7 @@ function unitLabel(r){
 function costEach(r){const y=productionYield(r);return y?batchCostForRecipe(r)/y:0}
 function costDozen(r){return costEach(r)*12}
 function estimatedRevenue(r){
-  const price=getSellPrice(r);
-  const y=productionYield(r);
-  if(unitLabel(r)==="jars" || unitLabel(r)==="pan") return price*selectedBatches(r);
-  return (y/12)*price;
+  return revenueForMode(r, pricingMode(r)==="squareEach" ? "squareRetailEach" : pricingMode(r));
 }
 function estimatedProfit(r){return estimatedRevenue(r)-batchCostForRecipe(r)}
 function flags(p){return p?(p.recipe||[]).filter(l=>number(l.amount)<=0||number(l.ingredientCost)<=0).length:0}
@@ -331,11 +393,22 @@ function batchControlHtml(r, compact=false, mode="production"){
   </div>`;
 }
 function priceControlHtml(r){
-  return `<label class="price-control" data-key="${r.key}">
-    <span>Sell / dozen or batch</span>
-    <input type="number" min="0" step="0.01" value="${getSellPrice(r).toFixed(2)}">
-  </label>`;
+  const rec=priceRecord(r);
+  const mode=pricingMode(r);
+  return `<div class="dual-price-control" data-key="${r.key}">
+    <label><span>Mode</span>
+      <select data-field="mode">
+        <option value="corporate" ${mode==="corporate"?"selected":""}>Corporate DZ</option>
+        <option value="square" ${mode==="square"?"selected":""}>Square DZ</option>
+        <option value="squareEach" ${mode==="squareEach"?"selected":""}>Square Each</option>
+      </select>
+    </label>
+    <label><span>Corp DZ</span><input type="number" min="0" step="0.01" data-field="corporateDz" value="${number(rec.corporateDz).toFixed(2)}"></label>
+    <label><span>Square DZ</span><input type="number" min="0" step="0.01" data-field="squareDz" value="${number(rec.squareDz).toFixed(2)}"></label>
+    <label><span>Each</span><input type="number" min="0" step="0.01" data-field="squareEach" value="${number(rec.squareEach).toFixed(2)}"></label>
+  </div>`;
 }
+
 function bindControls(){
   document.querySelectorAll(".batch-control").forEach(control=>{
     const key=control.dataset.key;
@@ -359,10 +432,18 @@ function bindControls(){
       renderAll();
     });
   });
-  document.querySelectorAll(".price-control").forEach(control=>{
+  document.querySelectorAll(".dual-price-control").forEach(control=>{
     const key=control.dataset.key;
-    const input=control.querySelector("input");
-    input?.addEventListener("change",()=>{setSellPrice(key,input.value);renderAll();});
+    control.querySelectorAll("input").forEach(input=>{
+      input.addEventListener("change",()=>{
+        setPriceField(key,input.dataset.field,input.value);
+        renderAll();
+      });
+    });
+    control.querySelector("select")?.addEventListener("change",e=>{
+      setPricingMode(key,e.target.value);
+      renderAll();
+    });
   });
 }
 
@@ -475,10 +556,11 @@ function renderCostCards(){
       <button type="button" id="zeroAllBatches">Set production batches to 0</button>
       <button type="button" id="oneCostedBatch">Set costed recipes to 1</button>
       <button type="button" id="resetKitchenBatches">Reset kitchen recipe batches to 1</button>
-      <span>Production batches control cost/profit/Smart Prep only.</span>
+      <span>Production batches control cost/profit/Smart Prep only. Pricing mode controls planner revenue.</span>
     </div>
     ${all.map(r=>{
       const cost=batchCostForRecipe(r), revenue=estimatedRevenue(r), profit=estimatedProfit(r), y=productionYield(r);
+      const best=bestPricingChannel(r);
       return`
         <article class="cost-card ${!r.costProduct||cost<=0?"needs-cleanup":""}">
           <div class="cost-top">
@@ -492,10 +574,16 @@ function renderCostCards(){
           ${batchControlHtml(r,true,"production")}
           ${priceControlHtml(r)}
           <div class="cost-stats business-stats">
-            <span><small>Revenue</small><b>${money(revenue)}</b></span>
+            <span><small>Active Rev</small><b>${money(revenue)}</b></span>
             <span><small>Profit</small><b>${money(profit)}</b></span>
             <span><small>Margin</small><b>${revenue?Math.round((profit/revenue)*100):0}%</b></span>
           </div>
+          <div class="mini-margin-row">
+            <span>Corp ${Math.round(marginForMode(r,"corporate"))}%</span>
+            <span>Sq DZ ${Math.round(marginForMode(r,"square"))}%</span>
+            <span>Sq Each ${Math.round(marginForMode(r,"squareRetailEach"))}%</span>
+          </div>
+          <p class="best-channel">Best profit channel: <b>${best[0]}</b></p>
           <details>
             <summary>${r.costProduct?"Ingredient cost breakdown":"No sheet match yet"}</summary>
             ${r.costProduct?(r.costProduct.recipe||[]).map(l=>`<p><b>${l.ingredient}</b><span>${number(l.amount).toFixed(2)} ${l.unit||""} • ${money(l.ingredientCost)}</span></p>`).join(""):`<p><b>Recipe text loaded.</b><span>Add matching cost rows.</span></p>`}
@@ -507,6 +595,39 @@ function renderCostCards(){
   document.getElementById("oneCostedBatch")?.addEventListener("click",setCostedBatchesOne);
   document.getElementById("resetKitchenBatches")?.addEventListener("click",resetKitchenRecipeBatches);
 }
+
+
+function renderPricing(){
+  const all=mergedRecipes();
+  const planned=all.filter(r=>selectedBatches(r)>0);
+  const rows=(planned.length?planned:all).map(r=>{
+    const corpRev=revenueForMode(r,"corporate"), sqRev=revenueForMode(r,"square"), eachRev=revenueForMode(r,"squareRetailEach");
+    const target=getTargetMargin(r);
+    const suggested=suggestedDzPriceForTarget(r,target);
+    return `
+      <article class="pricing-card">
+        <div>
+          <p class="eyebrow">${selectedBatches(r)} production ${selectedBatches(r)===1?"batch":"batches"}</p>
+          <h3>${r.name}</h3>
+          <small>Cost/dozen ${money(costDozen(r))} • Target ${target}%</small>
+        </div>
+        <div class="pricing-table">
+          <span><b>Corporate DZ</b><em>${money(getCorporateDzPrice(r))}</em><small>${Math.round(marginForMode(r,"corporate"))}% margin</small></span>
+          <span><b>Square DZ</b><em>${money(getSquareDzPrice(r))}</em><small>${Math.round(marginForMode(r,"square"))}% margin</small></span>
+          <span><b>Square Each</b><em>${money(getSquareEachPrice(r))}</em><small>${Math.round(marginForMode(r,"squareRetailEach"))}% margin</small></span>
+        </div>
+        <div class="suggested-price">
+          <b>Suggested DZ for ${target}% margin</b>
+          <strong>${money(suggested)}</strong>
+        </div>
+      </article>`;
+  }).join("");
+  document.getElementById("pricingGrid").innerHTML=rows || `<div class="empty-state">No recipes loaded.</div>`;
+  const pill=document.getElementById("pricingCountPill");
+  if(pill) pill.textContent=`${all.length} price sets`;
+}
+
+
 function renderIngredients(){
   const ing=[...(dashboardData.ingredients||[])].sort((a,b)=>a.name.localeCompare(b.name));
   document.getElementById("ingredientGrid").innerHTML=ing.length?ing.map(i=>`
@@ -563,32 +684,41 @@ function percent(value){
 }
 function buildBrain(){
   const all=mergedRecipes();
+  const planned=all.filter(r=>selectedBatches(r)>0);
   const productionCost=all.reduce((s,r)=>s+batchCostForRecipe(r),0);
-  const revenue=all.reduce((s,r)=>s+estimatedRevenue(r),0);
-  const profit=revenue-productionCost;
+  const activeRevenue=all.reduce((s,r)=>s+estimatedRevenue(r),0);
+  const corpRevenue=all.reduce((s,r)=>s+revenueForMode(r,"corporate"),0);
+  const squareDzRevenue=all.reduce((s,r)=>s+revenueForMode(r,"square"),0);
+  const squareEachRevenue=all.reduce((s,r)=>s+revenueForMode(r,"squareRetailEach"),0);
+  const activeProfit=activeRevenue-productionCost;
+  const corpProfit=corpRevenue-productionCost;
+  const squareDzProfit=squareDzRevenue-productionCost;
+  const squareEachProfit=squareEachRevenue-productionCost;
   const totalYield=all.reduce((s,r)=>s+productionYield(r),0);
   const totalDozens=totalYield/12;
-  const profitMargin=revenue>0?(profit/revenue)*100:0;
-  const roi=productionCost>0?(profit/productionCost)*100:0;
-  const avgProfitPerDozen=totalDozens>0?profit/totalDozens:0;
+  const activeMargin=activeRevenue>0?(activeProfit/activeRevenue)*100:0;
+  const corpMargin=corpRevenue>0?(corpProfit/corpRevenue)*100:0;
+  const squareDzMargin=squareDzRevenue>0?(squareDzProfit/squareDzRevenue)*100:0;
+  const squareEachMargin=squareEachRevenue>0?(squareEachProfit/squareEachRevenue)*100:0;
+  const roi=productionCost>0?(activeProfit/productionCost)*100:0;
+  const avgProfitPerDozen=totalDozens>0?activeProfit/totalDozens:0;
   const zeroMatch=all.filter(r=>!r.costProduct);
   const ingredientTotals=buildIngredientTotals().slice(0,18);
 
-  const planned=all.filter(r=>selectedBatches(r)>0);
-  const profitable=planned.filter(r=>estimatedProfit(r)>0);
-  const losing=planned.filter(r=>estimatedProfit(r)<0);
   const lowMargin=planned.filter(r=>{
     const rev=estimatedRevenue(r);
     const margin=rev>0?(estimatedProfit(r)/rev)*100:0;
-    return rev>0 && margin<55;
+    return rev>0 && margin<getTargetMargin(r);
   }).sort((a,b)=>{
     const ma=estimatedRevenue(a)>0?(estimatedProfit(a)/estimatedRevenue(a))*100:0;
     const mb=estimatedRevenue(b)>0?(estimatedProfit(b)/estimatedRevenue(b))*100:0;
     return ma-mb;
   });
-
-  const highProfit=[...planned].sort((a,b)=>estimatedProfit(b)-estimatedProfit(a))[0];
-  const highCost=[...planned].filter(r=>costEach(r)>0).sort((a,b)=>costEach(b)-costEach(a))[0];
+  const underpriced=planned.filter(r=> {
+    const suggested=suggestedDzPriceForTarget(r,getTargetMargin(r));
+    return suggested>0 && getCorporateDzPrice(r)>0 && getCorporateDzPrice(r)<suggested;
+  });
+  const bestActive=[...planned].filter(r=>estimatedRevenue(r)>0).sort((a,b)=>estimatedProfit(b)-estimatedProfit(a))[0];
   const bestMargin=[...planned].filter(r=>estimatedRevenue(r)>0).sort((a,b)=>{
     const ma=(estimatedProfit(a)/estimatedRevenue(a))*100;
     const mb=(estimatedProfit(b)/estimatedRevenue(b))*100;
@@ -597,96 +727,64 @@ function buildBrain(){
 
   const recs=[];
   if(!planned.length){
-    recs.push({
-      type:"warning",
-      title:"No production selected",
-      text:"Set Production Planner batches above 0 to activate cost, revenue, margin, ROI, and Smart Prep math."
-    });
+    recs.push({type:"warning",title:"No production selected",text:"Set Production Planner batches above 0 to activate dual-pricing margin math."});
   }
   if(zeroMatch.length){
+    recs.push({type:"warning",title:"Finish sheet matching",text:`${zeroMatch.length} recipes still need sheet matches before all pricing math is fully trusted.`});
+  }
+  if(activeRevenue>0){
+    recs.push({
+      type: activeMargin>=70?"success":activeMargin>=55?"money":"warning",
+      title:"Active pricing margin",
+      text:`Current selected pricing modes project ${percent(activeMargin)} margin, ${percent(roi)} ROI, and ${money(avgProfitPerDozen)} profit per dozen.`
+    });
+  }
+  const bestChannel=[
+    ["Corporate DZ",corpProfit,corpMargin,corpRevenue],
+    ["Square DZ",squareDzProfit,squareDzMargin,squareDzRevenue],
+    ["Square Each",squareEachProfit,squareEachMargin,squareEachRevenue]
+  ].filter(x=>x[3]>0).sort((a,b)=>b[1]-a[1])[0];
+  if(bestChannel){
+    recs.push({type:"success",title:"Best pricing channel",text:`${bestChannel[0]} currently projects the most profit: ${money(bestChannel[1])} at ${percent(bestChannel[2])} margin.`});
+  }
+  if(underpriced.length){
     recs.push({
       type:"warning",
-      title:"Finish sheet matching",
-      text:`${zeroMatch.length} recipes still need sheet matches before Brain 5.0 can fully trust profit and margin.`
-    });
-  }
-  if(revenue>0){
-    if(profitMargin>=75){
-      recs.push({type:"success",title:"Excellent margin",text:`Current production plan is running at ${percent(profitMargin)} margin. That is strong cottage bakery math.`});
-    } else if(profitMargin>=55){
-      recs.push({type:"money",title:"Healthy margin",text:`Current production plan is at ${percent(profitMargin)} margin. Good, but pricing could still be optimized.`});
-    } else if(profitMargin>0){
-      recs.push({type:"warning",title:"Margin needs attention",text:`Current production plan is only ${percent(profitMargin)} margin. Review sell prices or expensive ingredients.`});
-    } else {
-      recs.push({type:"danger",title:"Negative margin",text:"This production plan is losing money based on current sell prices and batch costs."});
-    }
-  }
-  if(roi>0){
-    recs.push({
-      type: roi>=200 ? "success" : "money",
-      title:"ROI check",
-      text:`For every $1 in ingredients, this plan projects about ${money((profit/productionCost)||0)} back in profit. ROI: ${percent(roi)}.`
-    });
-  }
-  if(losing.length){
-    recs.push({
-      type:"danger",
-      title:"Losing-money recipes",
-      text:`${losing.slice(0,3).map(r=>r.name).join(", ")} are negative profit with current sell prices.`
+      title:"Corporate DZ under target",
+      text:`${underpriced.slice(0,3).map(r=>`${r.name} → suggested ${money(suggestedDzPriceForTarget(r,getTargetMargin(r)))}/DZ`).join(", ")}.`
     });
   }
   if(lowMargin.length){
-    recs.push({
-      type:"warning",
-      title:"Low margin watchlist",
-      text:`Review pricing for ${lowMargin.slice(0,3).map(r=>r.name).join(", ")}. They are under the 55% margin target.`
-    });
+    recs.push({type:"warning",title:"Low-margin watchlist",text:`${lowMargin.slice(0,3).map(r=>r.name).join(", ")} are under their target margin in the active pricing mode.`});
   }
   if(bestMargin){
     const margin=(estimatedProfit(bestMargin)/estimatedRevenue(bestMargin))*100;
-    recs.push({
-      type:"success",
-      title:"Best margin recipe",
-      text:`${bestMargin.name} has the strongest current margin at ${percent(margin)}. Good candidate for boxes, promos, or Square featured items.`
-    });
+    recs.push({type:"success",title:"Best active margin",text:`${bestMargin.name} has the strongest active margin at ${percent(margin)}.`});
   }
-  if(highProfit){
-    recs.push({
-      type:"success",
-      title:"Best profit driver",
-      text:`${highProfit.name} currently projects ${money(estimatedProfit(highProfit))} profit from selected production batches.`
-    });
+  if(bestActive){
+    recs.push({type:"success",title:"Best profit driver",text:`${bestActive.name} currently projects ${money(estimatedProfit(bestActive))} profit in active pricing mode.`});
   }
-  if(highCost){
-    recs.push({
-      type:"money",
-      title:"Most expensive to make",
-      text:`${highCost.name} is ${money(costEach(highCost))} per item / ${money(costDozen(highCost))} per dozen. Price carefully.`
-    });
-  }
-  recs.push({
-    type:"success",
-    title:"Brain 5.0 ready for Square",
-    text:"When Square orders connect, this same brain can compare real order demand against production batches, margin, ROI, and prep needs."
-  });
+  recs.push({type:"success",title:"Square-safe pricing logic",text:"Square prices are treated as retail sales data. Corporate DZ pricing stays separate, so Square will not overwrite your pricing strategy."});
 
   return {
-    all, planned, profitable, losing, productionCost, revenue, profit,
-    totalYield, totalDozens, profitMargin, roi, avgProfitPerDozen,
-    zeroMatch, ingredientTotals, recs
+    all, planned, productionCost, activeRevenue, activeProfit,
+    corpRevenue, squareDzRevenue, squareEachRevenue,
+    corpProfit, squareDzProfit, squareEachProfit,
+    activeMargin, corpMargin, squareDzMargin, squareEachMargin,
+    roi, avgProfitPerDozen, totalYield, zeroMatch, ingredientTotals, recs
   };
 }
 function renderBrain(){
   const brain=buildBrain();
   document.getElementById("brainSummary").innerHTML=`
-    <article><span>Production Cost</span><strong>${money(brain.productionCost)}</strong><small>planner batches only</small></article>
-    <article><span>Revenue</span><strong>${money(brain.revenue)}</strong><small>editable sell prices</small></article>
-    <article><span>Profit</span><strong>${money(brain.profit)}</strong><small>projected net</small></article>
-    <article><span>Margin</span><strong>${percent(brain.profitMargin)}</strong><small>profit ÷ revenue</small></article>
-    <article><span>ROI</span><strong>${percent(brain.roi)}</strong><small>profit ÷ ingredient cost</small></article>
-    <article><span>Profit / Dozen</span><strong>${money(brain.avgProfitPerDozen)}</strong><small>across projected yield</small></article>
-    <article><span>Yield</span><strong>${Math.round(brain.totalYield)}</strong><small>planned items</small></article>
-    <article><span>Sheet Matches</span><strong>${brain.all.length-brain.zeroMatch.length}/${brain.all.length}</strong><small>linked recipes</small></article>
+    <article><span>Cost</span><strong>${money(brain.productionCost)}</strong><small>planner batches</small></article>
+    <article><span>Active Revenue</span><strong>${money(brain.activeRevenue)}</strong><small>selected pricing modes</small></article>
+    <article><span>Active Profit</span><strong>${money(brain.activeProfit)}</strong><small>projected net</small></article>
+    <article><span>Active Margin</span><strong>${percent(brain.activeMargin)}</strong><small>profit ÷ revenue</small></article>
+    <article><span>Corporate Profit</span><strong>${money(brain.corpProfit)}</strong><small>${percent(brain.corpMargin)} margin</small></article>
+    <article><span>Square DZ Profit</span><strong>${money(brain.squareDzProfit)}</strong><small>${percent(brain.squareDzMargin)} margin</small></article>
+    <article><span>Square Each Profit</span><strong>${money(brain.squareEachProfit)}</strong><small>${percent(brain.squareEachMargin)} margin</small></article>
+    <article><span>Profit / Dozen</span><strong>${money(brain.avgProfitPerDozen)}</strong><small>active pricing</small></article>
   `;
   document.getElementById("brainCards").innerHTML=brain.recs.map(item=>`
     <article class="brain-card ${item.type}">
@@ -719,6 +817,7 @@ function renderAll(){
   renderRecipeList(document.getElementById("recipeSearch")?.value||"");
   renderRecipeDetail();
   renderCostCards();
+  renderPricing();
   renderIngredients();
   renderCleanup();
   renderBrain();

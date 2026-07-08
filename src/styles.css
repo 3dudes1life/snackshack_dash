@@ -647,3 +647,113 @@ details p span{text-align:right;color:var(--muted)}
 .brain-card.success {
   background:#ecf7f2;
 }
+
+
+/* v24 dual pricing brain */
+.pricing-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:12px;
+}
+.pricing-card {
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:18px;
+  padding:14px;
+  box-shadow:var(--soft);
+}
+.pricing-card h3 {
+  font-family:"Baloo 2",Inter,sans-serif;
+  margin:0;
+  line-height:1;
+}
+.pricing-card small { color:var(--muted); }
+.pricing-table {
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:7px;
+  margin:12px 0;
+}
+.pricing-table span,
+.suggested-price,
+.mini-margin-row span {
+  background:#fff8ea;
+  border-radius:13px;
+  padding:8px;
+}
+.pricing-table b,
+.pricing-table em,
+.pricing-table small {
+  display:block;
+}
+.pricing-table em {
+  font-style:normal;
+  font-weight:900;
+  color:var(--deep);
+}
+.suggested-price {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+}
+.suggested-price strong { color:var(--teal); }
+.dual-price-control {
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:7px;
+  margin:9px 0;
+}
+.dual-price-control label {
+  display:grid;
+  gap:3px;
+}
+.dual-price-control span {
+  color:var(--muted);
+  font-size:.58rem;
+  font-weight:900;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.dual-price-control input,
+.dual-price-control select {
+  width:100%;
+  min-width:0;
+  border:1px solid var(--line);
+  border-radius:10px;
+  padding:7px;
+  font:inherit;
+  font-size:.8rem;
+  font-weight:900;
+  color:var(--deep);
+  background:#fff;
+}
+.mini-margin-row {
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:6px;
+  margin:8px 0;
+}
+.mini-margin-row span {
+  text-align:center;
+  font-size:.7rem;
+  font-weight:900;
+  color:var(--teal);
+}
+.best-channel {
+  color:var(--muted);
+  font-size:.78rem;
+  margin:7px 0;
+}
+.brain-summary {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important;
+}
+.brain-card.danger {
+  background:#fff0ee;
+  border-color:rgba(201,71,71,.22);
+}
+@media(max-width:520px){
+  .dual-price-control,
+  .pricing-table,
+  .mini-margin-row { grid-template-columns:1fr; }
+}

@@ -5,25 +5,26 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 <title>C-Dawg's Snack Shack Command Center</title>
 <meta name="theme-color" content="#f7f1df"/>
-<link rel="manifest" href="manifest.webmanifest?v=23-brain-5"/>
-<link rel="icon" href="icon.svg?v=23-brain-5" type="image/svg+xml"/>
-<link rel="apple-touch-icon" href="icon.svg?v=23-brain-5"/>
+<link rel="manifest" href="manifest.webmanifest?v=24-dual-pricing-brain"/>
+<link rel="icon" href="icon.svg?v=24-dual-pricing-brain" type="image/svg+xml"/>
+<link rel="apple-touch-icon" href="icon.svg?v=24-dual-pricing-brain"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="src/styles.css?v=23-brain-5"/>
+<link rel="stylesheet" href="src/styles.css?v=24-dual-pricing-brain"/>
 </head>
 <body>
 <div class="app-shell">
   <aside class="sidebar">
     <a class="brand" href="#top">
-      <img src="icon.svg?v=23-brain-5" alt="C-Dawg's"/>
+      <img src="icon.svg?v=24-dual-pricing-brain" alt="C-Dawg's"/>
       <span>C-Dawg's</span>
     </a>
     <nav class="side-nav">
       <a href="#top">Dashboard</a>
       <a href="#cook">Cook Mode</a>
       <a href="#costs">Production Planner</a>
+      <a href="#pricing">Pricing</a>
       <a href="#ingredients">Ingredients</a>
       <a href="#cleanup">Cleanup</a>
       <a href="#report">Snack IQ</a>
@@ -70,6 +71,19 @@
       <div id="recipeCards" class="cost-card-grid"></div>
     </section>
 
+
+    <section id="pricing" class="panel">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">Dual Pricing</p>
+          <h2>Corporate DZ vs Square Retail</h2>
+          <p class="muted">Corporate pricing and Square pricing stay separate so Brain can compare both margins.</p>
+        </div>
+        <span class="count-pill" id="pricingCountPill">0 prices</span>
+      </div>
+      <div id="pricingGrid" class="pricing-grid"></div>
+    </section>
+
     <section id="ingredients" class="panel">
       <div class="panel-head">
         <div>
@@ -107,11 +121,11 @@
     <section id="report" class="panel brain-panel">
       <div class="panel-head">
         <div>
-          <p class="eyebrow">Snack IQ 5.0 Brain</p>
-          <h2>Bakery Manager Brain 5.0</h2>
-          <p class="muted">Square-ready bakery brain: margin, ROI, profit-per-dozen, production cost, ingredient prep, and what Caleb should do next.</p>
+          <p class="eyebrow">Snack IQ 5.5 Brain</p>
+          <h2>Bakery Manager Brain 5.5</h2>
+          <p class="muted">Dual-pricing bakery brain: recipe cost, corporate DZ pricing, Square retail pricing, margins, ROI, and prep needs.</p>
         </div>
-        <button id="brainButton" class="print-btn">Run Brain 5.0</button>
+        <button id="brainButton" class="print-btn">Run Brain 5.5</button>
       </div>
       <div id="brainSummary" class="brain-summary"></div>
       <div id="brainCards" class="brain-grid"></div>
@@ -120,8 +134,8 @@
   </main>
 </div>
 
-<script src="data/recipe-library.js?v=23-brain-5"></script>
-<script src="data/config.js?v=23-brain-5"></script>
-<script src="src/app.js?v=23-brain-5"></script>
+<script src="data/recipe-library.js?v=24-dual-pricing-brain"></script>
+<script src="data/config.js?v=24-dual-pricing-brain"></script>
+<script src="src/app.js?v=24-dual-pricing-brain"></script>
 </body>
 </html>

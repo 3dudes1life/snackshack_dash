@@ -209,3 +209,33 @@ Formulas:
 Still respects the separated batch system:
 - Kitchen batches only scale the visible recipe.
 - Production Planner batches drive Brain 5.0, profit, margin, ROI, and Smart Prep.
+
+
+## v24 Dual Pricing Brain 5.5
+
+Adds separate pricing layers:
+
+### Recipe Cost
+Still comes from Google Sheets recipe + ingredient costs.
+
+### Corporate DZ Pricing
+Used for corporate / bulk dozen orders.
+
+### Square Retail Pricing
+Used for Square retail / market / pop-up pricing.
+Supports:
+- Square DZ price
+- Square each price
+
+### Brain 5.5 adds
+- Active pricing mode per recipe
+- Corporate profit/margin
+- Square DZ profit/margin
+- Square each profit/margin
+- Suggested dozen price for target margin
+- Underpriced corporate warnings
+- Best pricing channel recommendation
+
+Important:
+Square catalog pricing should be treated as sales/catalog data, not the only pricing authority.
+Google Sheets can remain the strategic pricing authority.
