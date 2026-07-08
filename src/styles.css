@@ -999,3 +999,30 @@ details p span{text-align:right;color:var(--muted)}
   color: var(--teal);
   font-weight: 900;
 }
+
+
+/* v28 Square auth + PNG logo fix */
+.brand-logo,
+.logo img,
+.sidebar img,
+nav img {
+  width: 38px;
+  height: 38px;
+  border-radius: 14px;
+  object-fit: cover;
+  flex: 0 0 auto;
+  box-shadow: 0 8px 18px rgba(120,80,40,.16);
+}
+.sidebar .brand-logo {
+  width: 42px;
+  height: 42px;
+}
+.square-status .status-dot.error + div b::after {
+  content: "";
+}
+.square-status .auth-help {
+  display: block;
+  margin-top: 4px;
+  color: var(--coral);
+  font-weight: 900;
+}

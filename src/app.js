@@ -743,6 +743,16 @@ function invoiceDate(invoice){
 }
 function invoiceItems(invoice){
   const items=invoice.items || invoice.lineItems || invoice.line_items || [];
+  if(!items.length && (invoice.title || invoice.description)){
+    return [{
+      name: invoice.title || invoice.description || "Invoice item",
+      quantity: 1,
+      total: invoiceTotal(invoice),
+      variationName: "",
+      catalogObjectId: "",
+      raw: invoice
+    }];
+  }
   return items.map(item=>({
     name:item.name || item.description || item.title || "Invoice item",
     quantity:number(item.quantity || item.qty || 1) || 1,
@@ -835,8 +845,9 @@ function renderOrderHub(){
     squareStatus.innerHTML=`
       <div class="status-dot ${status}"></div>
       <div>
-        <b>Square ${status.replace(/_/g," ")}</b>
+        <b>${message.includes("UrlFetchApp.fetch") ? "Square authorization needed" : `Square ${status.replace(/_/g," ")}`}</b>
         <span>${message}</span>
+        ${message.includes("UrlFetchApp.fetch") ? `<span class="auth-help">Run authorizeSquareFetch_ inside Apps Script editor, approve permissions, then redeploy a new version.</span>` : ""}
       </div>
       <small>${dashboardData.squareCatalog?.length||0} catalog records</small>
     `;

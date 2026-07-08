@@ -303,3 +303,23 @@ Fixes:
 
 Important:
 If the dashboard shows `You do not have permission to call UrlFetchApp.fetch`, open Apps Script, select `authorizeSquareFetch_`, click Run, approve permissions, then Deploy > Manage deployments > Edit > New version > Deploy.
+
+
+## v28 Square Auth + PNG Logo Fix
+
+Fixes:
+- Adds real PNG logo at `assets/cdawg-logo.png`.
+- Adds favicon at `assets/favicon.png`.
+- Patches dashboard logo references to use the PNG file.
+- Adds friendlier Square authorization warning.
+- Invoice title/description now becomes a fallback invoice item for production demand.
+- Backend includes `authorizeSquareFetch_`.
+- Backend includes `testSquareConnection_`.
+- Backend includes `appsscript.json` with explicit UrlFetchApp scope.
+
+If Apps Script does not ask for permissions:
+- Turn on the manifest file in Apps Script project settings.
+- Paste `backend/google-apps-script/appsscript.json`.
+- Save.
+- Select `authorizeSquareFetch_` from the function dropdown.
+- Click Run from inside Apps Script, not from the web app URL.

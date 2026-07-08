@@ -10,15 +10,27 @@ so Google grants UrlFetchApp permission.
 */
 
 function authorizeSquareFetch_() {
+  // Run this manually once from the Apps Script editor.
+  // It forces Google to ask permission for UrlFetchApp external requests.
+  const token = PropertiesService.getScriptProperties().getProperty("SQUARE_ACCESS_TOKEN");
+  if (!token) throw new Error("Missing SQUARE_ACCESS_TOKEN in Script Properties.");
+
   UrlFetchApp.fetch("https://connect.squareup.com/v2/locations", {
     method: "get",
     muteHttpExceptions: true,
     headers: {
-      Authorization: "Bearer " + PropertiesService.getScriptProperties().getProperty("SQUARE_ACCESS_TOKEN"),
+      Authorization: "Bearer " + token,
       "Square-Version": "2025-06-18",
       "Content-Type": "application/json"
     }
   });
+}
+
+
+function testSquareConnection_() {
+  const data = fetchSquareData_();
+  Logger.log(JSON.stringify(data, null, 2));
+  return data;
 }
 
 function doGet(e) {
@@ -275,7 +287,15 @@ function fetchSquareInvoices_(token, locationId) {
     customer: invoice.primary_recipient && invoice.primary_recipient.customer_id ? invoice.primary_recipient.customer_id : "Square Invoice Customer",
     title: invoice.title || "",
     description: invoice.description || "",
-    items: []
+    items: [
+      {
+        name: invoice.title || invoice.description || "Invoice item",
+        quantity: 1,
+        variationName: "",
+        catalogObjectId: "",
+        total: invoice.computed_amount_money ? invoice.computed_amount_money.amount / 100 : 0
+      }
+    ]
   }));
 }
 
