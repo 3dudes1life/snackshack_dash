@@ -350,3 +350,16 @@ Adds the real uploaded C-Dawg logo and upgrades Brain into a daily action brain.
 - Keeps Kitchen Recipe Workspace batch counts separate.
 
 Upload this ZIP over the GitHub Pages files.
+
+
+## v30 Real Uploaded Logo Fix
+
+This ZIP uses the actual uploaded logo file:
+
+- `assets/cdawgs-snackshack-uploaded-logo.jpeg` ← visible dashboard logo
+- `assets/cdawg-logo.png` ← PNG version from the uploaded logo
+- `assets/favicon.png`
+- `assets/apple-touch-icon.png`
+
+The old/generated generic logo and `icon.svg` fallback were removed.
+See `LOGO_PROOF.json`.

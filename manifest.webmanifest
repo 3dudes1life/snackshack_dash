@@ -7,17 +7,17 @@
   "theme_color": "#f7f1df",
   "icons": [
     {
-      "src": "assets/favicon.png?v=29",
+      "src": "assets/favicon.png?v=30",
       "sizes": "128x128",
       "type": "image/png"
     },
     {
-      "src": "assets/apple-touch-icon.png?v=29",
+      "src": "assets/apple-touch-icon.png?v=30",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "assets/cdawg-logo.png?v=29",
+      "src": "assets/cdawg-logo.png?v=30",
       "sizes": "512x512",
       "type": "image/png"
     }
