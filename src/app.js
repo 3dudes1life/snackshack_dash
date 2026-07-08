@@ -3,8 +3,7 @@ const number=v=>Number(v||0)||0;
 const norm=v=>String(v||"").toLowerCase().replace(/&/g,"and").replace(/[^a-z0-9]+/g,"");
 
 function titleWords(value){
-  return String(value||"")
-    .toLowerCase()
+  return String(value||"").toLowerCase()
     .replace(/&/g," and ")
     .replace(/chocoloate/g,"chocolate")
     .replace(/choc\./g,"chocolate")
@@ -14,45 +13,33 @@ function titleWords(value){
     .replace(/[^a-z0-9]+/g," ")
     .split(" ")
     .filter(Boolean)
-    .filter(word=>![
-      "cookie","cookies","treat","treats","soft","chewy","bakery","style",
-      "and","the","a","an","of","with","one","batch","batches","recipe",
-      "photo","google","sheet","cost","costs","pan","9x12","jumbo"
-    ].includes(word));
+    .filter(word=>!["cookie","cookies","treat","treats","soft","chewy","bakery","style","and","the","a","an","of","with","one","batch","batches","recipe","photo","google","sheet","cost","costs","pan","9x12","jumbo"].includes(word));
 }
-
-function smartKey(value){
-  return titleWords(value).join("");
-}
-
+function smartKey(value){return titleWords(value).join("");}
 function tokenScore(a,b){
-  const aw=[...new Set(titleWords(a))];
-  const bw=[...new Set(titleWords(b))];
+  const aw=[...new Set(titleWords(a))], bw=[...new Set(titleWords(b))];
   if(!aw.length || !bw.length) return 0;
   const shared=aw.filter(w=>bw.includes(w)).length;
-  return shared / Math.max(aw.length,bw.length);
+  return shared/Math.max(aw.length,bw.length);
 }
-
-const MANUAL_MATCHES = {
-  chocolatechipcookies: ["chocolatechip", "classicchocolatechip", "chocolatechipcookies"],
-  brownbutterchocolatechip: ["brownbutterchocolatechip", "brownbutterchocchip", "chewybrownbutterchocolatechip"],
-  doublechocolatechip: ["doublechocolatechip", "doublechocolatechipcookies"],
-  greenmintchocolatechip: ["greenmintchocolatechip", "greenmintchocoloatechip"],
-  whitechocolatemacadamianut: ["whitechocolatemacadamianut", "whitechocmacadamianut", "whitechocolatemacadamianutcookies"],
-  oatmealsraisin: ["oatmealraisin", "bakeryoatmealraisin"],
-  oatmealraisin: ["oatmealraisin", "bakeryoatmealraisin"],
-  molasses: ["molasses", "gingermolasses", "softgingermolasses"],
-  softsprinkle: ["softsprinkle", "sprinkle", "softsprinklecookies", "sugarsprinkle"],
-  pumpkinsnickerdoodle: ["pumpkinsnickerdoodle"],
-  peanutbutter: ["peanutbutter", "softchewypeanutbutter"],
-  redvelvet: ["redvelvet"],
-  thumbprint: ["thumbprint", "thumbprintcookies"],
-  nannypoundcake: ["nannypoundcake", "poundcake"],
-  blackberryjam: ["blackberryjam", "blackberry"],
-  ricekrispietreats: ["ricekrispietreats", "ricekrispie", "ricekrispietreats9x12pan", "ricekrispietreat"],
-  monster: ["monster", "monstercookies"]
+const MANUAL_MATCHES={
+  chocolatechipcookies:["chocolatechip","classicchocolatechip","chocolatechipcookies"],
+  brownbutterchocolatechip:["brownbutterchocolatechip","brownbutterchocchip","chewybrownbutterchocolatechip"],
+  doublechocolatechip:["doublechocolatechip","doublechocolatechipcookies"],
+  greenmintchocolatechip:["greenmintchocolatechip","greenmintchocoloatechip"],
+  whitechocolatemacadamianut:["whitechocolatemacadamianut","whitechocmacadamianut","whitechocolatemacadamianutcookies"],
+  oatmealraisin:["oatmealraisin","bakeryoatmealraisin"],
+  molasses:["molasses","gingermolasses","softgingermolasses"],
+  softsprinkle:["softsprinkle","sprinkle","softsprinklecookies","sugarsprinkle"],
+  pumpkinsnickerdoodle:["pumpkinsnickerdoodle"],
+  peanutbutter:["peanutbutter","softchewypeanutbutter"],
+  redvelvet:["redvelvet"],
+  thumbprint:["thumbprint","thumbprintcookies"],
+  nannypoundcake:["nannypoundcake","poundcake"],
+  blackberryjam:["blackberryjam","blackberry"],
+  ricekrispietreats:["ricekrispietreats","ricekrispie","ricekrispietreats9x12pan","ricekrispietreat"],
+  monster:["monster","monstercookies"]
 };
-
 function matchingKeysForRecipe(recipe){
   const names=[recipe.name,...(recipe.aliases||[])];
   const keys=new Set();
@@ -68,21 +55,34 @@ let dashboardData={products:[],ingredients:[],orders:[],customers:[]};
 const bakedRecipes=window.CDAWG_RECIPE_LIBRARY||[];
 let selectedRecipeKey="";
 const batchState=loadBatchState();
+const priceState=loadPriceState();
 
-function loadBatchState(){
-  try{return JSON.parse(localStorage.getItem("cdawgBatchState")||"{}")}catch(e){return{}}
-}
-function saveBatchState(){
-  localStorage.setItem("cdawgBatchState",JSON.stringify(batchState));
-}
+const DEFAULT_SELL_PRICE_PER_DOZEN = 18;
+const DEFAULT_SELL_PRICE_EACH = 2;
+
+function loadBatchState(){try{return JSON.parse(localStorage.getItem("cdawgBatchState")||"{}")}catch(e){return{}}}
+function saveBatchState(){localStorage.setItem("cdawgBatchState",JSON.stringify(batchState));}
+function loadPriceState(){try{return JSON.parse(localStorage.getItem("cdawgPriceState")||"{}")}catch(e){return{}}}
+function savePriceState(){localStorage.setItem("cdawgPriceState",JSON.stringify(priceState));}
+
 function getBatchOverride(key,fallback=1){
   const value=number(batchState[key]);
   return value>0?value:number(fallback)||1;
 }
 function setBatchOverride(key,value){
-  batchState[key]=Math.max(0,number(value));
-  if(batchState[key]===0) batchState[key]=1;
+  batchState[key]=Math.max(1,number(value));
   saveBatchState();
+}
+function getSellPrice(r){
+  const stored=number(priceState[r.key]);
+  if(stored>0) return stored;
+  const yieldNum=extractYieldNumber(r.costProduct?.yieldLabel||r.yield);
+  if(yieldNum>=6) return DEFAULT_SELL_PRICE_PER_DOZEN;
+  return DEFAULT_SELL_PRICE_EACH;
+}
+function setSellPrice(key,value){
+  priceState[key]=Math.max(0,number(value));
+  savePriceState();
 }
 
 function jsonp(url){
@@ -97,7 +97,6 @@ function jsonp(url){
     document.body.appendChild(s);
   });
 }
-
 async function loadBackendData(){
   const url=window.SNACKSHACK_API_URL||"";
   if(!url||url.includes("PASTE")) throw new Error("Missing backend URL.");
@@ -113,27 +112,18 @@ function recipeKey(r){return norm(r.name)}
 function findCostProduct(r){
   const products=dashboardData.products||[];
   const recipeKeys=matchingKeysForRecipe(r);
-
-  // 1. Strong manual / normalized key match.
   let found=products.find(p=>{
     const productKeys=[smartKey(p.name), smartKey(p.sku), norm(p.name), norm(p.sku)].filter(Boolean);
     return recipeKeys.some(rk=>productKeys.some(pk=>pk===rk || pk.includes(rk) || rk.includes(pk)));
   });
   if(found) return found;
 
-  // 2. Token score fuzzy match. This catches "Chocolate Chip Cookies" vs "Chocolate Chip".
-  let best=null;
-  let bestScore=0;
+  let best=null, bestScore=0;
   products.forEach(p=>{
-    const candidates=[p.name,p.sku].filter(Boolean);
-    const recipeNames=[r.name,...(r.aliases||[])];
-    recipeNames.forEach(rn=>{
-      candidates.forEach(pn=>{
+    [p.name,p.sku].filter(Boolean).forEach(pn=>{
+      [r.name,...(r.aliases||[])].forEach(rn=>{
         const score=tokenScore(rn,pn);
-        if(score>bestScore){
-          bestScore=score;
-          best=p;
-        }
+        if(score>bestScore){bestScore=score;best=p;}
       });
     });
   });
@@ -157,38 +147,69 @@ function mergedRecipes(){
   });
   return rows.sort((a,b)=>a.name.localeCompare(b.name));
 }
-function sheetBatches(p){return p?number(p.batches)||1:1}
-function baseBatchCost(p){
-  return p?(number(p.totalBatchCost)||(p.recipe||[]).reduce((s,l)=>s+number(l.ingredientCost),0)):0;
-}
-function singleBatchCost(p){
-  const sb=sheetBatches(p);
-  return sb?baseBatchCost(p)/sb:baseBatchCost(p);
-}
-function selectedBatches(recipeOrProduct){
-  const key=recipeOrProduct.key||norm(recipeOrProduct.name||recipeOrProduct.sku);
-  return getBatchOverride(key, sheetBatches(recipeOrProduct.costProduct||recipeOrProduct));
-}
-function batchCostForRecipe(r){
-  return singleBatchCost(r.costProduct)*selectedBatches(r);
-}
-function perCookieForRecipe(r){
-  const p=r.costProduct;
-  if(!p) return 0;
-  const sheetYield=number(p.batchYieldUnits)||extractYieldNumber(r.yield);
-  return sheetYield ? batchCostForRecipe(r)/sheetYield : 0;
-}
-function perDozenForRecipe(r){return perCookieForRecipe(r)*12}
 function extractYieldNumber(yieldText){
   const found=String(yieldText||"").match(/[\d.]+/);
   return found?number(found[0]):0;
 }
+function sheetBatches(p){return p?number(p.batches)||1:1}
+function baseBatchCost(p){return p?(number(p.totalBatchCost)||(p.recipe||[]).reduce((s,l)=>s+number(l.ingredientCost),0)):0}
+function singleBatchCost(p){const sb=sheetBatches(p);return sb?baseBatchCost(p)/sb:baseBatchCost(p)}
+function selectedBatches(r){return getBatchOverride(r.key, sheetBatches(r.costProduct))}
+function batchCostForRecipe(r){return singleBatchCost(r.costProduct)*selectedBatches(r)}
+function yieldPerSheetPlan(r){
+  const p=r.costProduct;
+  const y=extractYieldNumber(p?.yieldLabel||r.yield);
+  return y || 0;
+}
+function yieldPerSingleBatch(r){
+  const y=yieldPerSheetPlan(r);
+  const sb=sheetBatches(r.costProduct);
+  return sb?y/sb:y;
+}
+function productionYield(r){return yieldPerSingleBatch(r)*selectedBatches(r)}
+function unitLabel(r){
+  const text=String(r.costProduct?.yieldLabel||r.yield||"items").toLowerCase();
+  if(text.includes("jar")) return "jars";
+  if(text.includes("square")) return "squares";
+  if(text.includes("pan")) return "pan";
+  if(text.includes("cookie")) return "cookies";
+  return "items";
+}
+function costEach(r){const y=productionYield(r);return y?batchCostForRecipe(r)/y:0}
+function costDozen(r){return costEach(r)*12}
+function estimatedRevenue(r){
+  const price=getSellPrice(r);
+  const y=productionYield(r);
+  if(unitLabel(r)==="jars" || unitLabel(r)==="pan") return price*selectedBatches(r);
+  return (y/12)*price;
+}
+function estimatedProfit(r){return estimatedRevenue(r)-batchCostForRecipe(r)}
 function flags(p){return p?(p.recipe||[]).filter(l=>number(l.amount)<=0||number(l.ingredientCost)<=0).length:0}
-function pricedRecipes(){return mergedRecipes().filter(r=>batchCostForRecipe(r)>0||perCookieForRecipe(r)>0)}
-function needs(){return mergedRecipes().filter(r=>!r.costProduct||batchCostForRecipe(r)<=0)}
-function activeRecipe(){
-  const all=mergedRecipes();
-  return all.find(r=>r.key===selectedRecipeKey)||all[0];
+function activeRecipe(){const all=mergedRecipes();return all.find(r=>r.key===selectedRecipeKey)||all[0];}
+
+function scaleAmountText(text,batches){
+  const value=number(text);
+  if(!value) return text;
+  const scaled=value*batches;
+  if(Math.abs(scaled-Math.round(scaled))<.001) return String(Math.round(scaled));
+  return scaled.toFixed(2).replace(/\.?0+$/,"");
+}
+function scaledIngredientText(raw,batches){
+  const text=String(raw||"");
+  return text.replace(/^(\s*)(\d+(?:\.\d+)?)(\s+)/,(_,pre,num,space)=>pre+scaleAmountText(num,batches)+space);
+}
+function pRecipeLinesForScaledIngredients(r){
+  const p=r.costProduct;
+  if(!p || !(p.recipe||[]).length){
+    return (r.ingredients||[]).map(item=>scaledIngredientText(item,selectedBatches(r)));
+  }
+  const sheetBatch=sheetBatches(p);
+  const multiplier=selectedBatches(r)/sheetBatch;
+  return (p.recipe||[]).map(line=>{
+    const amt=(number(line.amount)*multiplier);
+    const pretty=amt?amt.toFixed(2).replace(/\.?0+$/,""):"";
+    return `${pretty} ${line.unit||""} ${line.ingredient}`.trim();
+  });
 }
 
 function batchControlHtml(r, compact=false){
@@ -199,43 +220,51 @@ function batchControlHtml(r, compact=false){
     <button type="button" data-action="plus" aria-label="Increase batches">+</button>
   </div>`;
 }
-function bindBatchControls(){
+function priceControlHtml(r){
+  return `<label class="price-control" data-key="${r.key}">
+    <span>Sell / dozen or batch</span>
+    <input type="number" min="0" step="0.01" value="${getSellPrice(r).toFixed(2)}">
+  </label>`;
+}
+function bindControls(){
   document.querySelectorAll(".batch-control").forEach(control=>{
     const key=control.dataset.key;
     control.querySelectorAll("button").forEach(btn=>{
       btn.addEventListener("click",()=>{
         const current=getBatchOverride(key,1);
         setBatchOverride(key, btn.dataset.action==="plus"?current+1:Math.max(1,current-1));
-        renderAll(false);
+        renderAll();
       });
     });
     const input=control.querySelector("input");
-    input?.addEventListener("change",()=>{
-      setBatchOverride(key,input.value);
-      renderAll(false);
-    });
+    input?.addEventListener("change",()=>{setBatchOverride(key,input.value);renderAll();});
+  });
+  document.querySelectorAll(".price-control").forEach(control=>{
+    const key=control.dataset.key;
+    const input=control.querySelector("input");
+    input?.addEventListener("change",()=>{setSellPrice(key,input.value);renderAll();});
   });
 }
+
 function renderStatus(live,msg){
   const all=mergedRecipes();
   if(!selectedRecipeKey && all[0]) selectedRecipeKey=all[0].key;
   document.getElementById("statusTitle").textContent=live?`${all.length} recipes ready for Caleb`:`${all.length} recipes loaded`;
-  document.getElementById("statusMessage").textContent=live?`${dashboardData.ingredients.length} ingredient costs connected. Batch counts can be changed on-screen.`:(msg||"Built-in recipe cards are loaded.");
+  document.getElementById("statusMessage").textContent=live?`${dashboardData.ingredients.length} ingredient costs connected. Cook Mode now scales ingredients only.`:(msg||"Built-in recipe cards are loaded.");
 }
 function renderOverview(){
   const all=mergedRecipes();
-  const p=pricedRecipes();
-  const n=needs();
-  const avg=p.length?p.reduce((s,x)=>s+perCookieForRecipe(x),0)/p.length:0;
-  const totalProductionCost=all.reduce((s,r)=>s+batchCostForRecipe(r),0);
-  const totalBatches=all.reduce((s,r)=>s+selectedBatches(r),0);
+  const linked=all.filter(r=>r.costProduct).length;
+  const productionCost=all.reduce((s,r)=>s+batchCostForRecipe(r),0);
+  const revenue=all.reduce((s,r)=>s+estimatedRevenue(r),0);
+  const totalYield=all.reduce((s,r)=>s+productionYield(r),0);
   const cards=[
-    ["Cook Cards",all.length,"Recipes ready"],
-    ["Production Batches",totalBatches,"Editable on-screen"],
-    ["Production Cost",money(totalProductionCost),"Using batch controls"],
-    ["Ingredients",dashboardData.ingredients.length,"Cost library"],
-    ["Avg Cost/Cookie",money(avg),"Across costed recipes"],
-    ["Needs Cleanup",n.length,"Zero-cost recipes"]
+    ["Recipes",all.length,"Kitchen cards"],
+    ["Linked Costs",`${linked}/${all.length}`,"Google Sheet matched"],
+    ["Batches",all.reduce((s,r)=>s+selectedBatches(r),0),"Selected today"],
+    ["Yield",Math.round(totalYield),"Projected items"],
+    ["Cost",money(productionCost),"Production estimate"],
+    ["Profit",money(revenue-productionCost),"Using sell prices"]
   ];
   document.getElementById("overview").innerHTML=cards.map(([label,value,detail])=>`
     <article class="metric-card">
@@ -251,14 +280,13 @@ function renderRecipeList(filter=""){
   const q=filter.trim().toLowerCase();
   const all=mergedRecipes().filter(r=>!q||r.name.toLowerCase().includes(q)||(r.ingredients||[]).join(" ").toLowerCase().includes(q));
   document.getElementById("recipeList").innerHTML=all.map(r=>{
-    const p=r.costProduct;
     return`
       <button class="recipe-row ${r.key===selectedRecipeKey?"active":""}" data-key="${r.key}">
         <span>
           <b>${r.name}</b>
-          <small>${r.yield||"Yield TBD"}${p?` • ${selectedBatches(r)} batch • ${money(batchCostForRecipe(r))}`:""}</small>
+          <small>${selectedBatches(r)} batch • ${Math.round(productionYield(r))} ${unitLabel(r)}</small>
         </span>
-        <em class="${p?"linked":"text"}">${p?"Cost":"Text"}</em>
+        <em class="${r.costProduct?"linked":"text"}">${r.costProduct?"Cost":"Text"}</em>
       </button>`;
   }).join("");
   document.querySelectorAll(".recipe-row").forEach(btn=>{
@@ -266,35 +294,35 @@ function renderRecipeList(filter=""){
       selectedRecipeKey=btn.dataset.key;
       renderRecipeList(document.getElementById("recipeSearch").value);
       renderRecipeDetail();
-      bindBatchControls();
+      bindControls();
     });
   });
 }
 function renderRecipeDetail(){
   const r=activeRecipe();
   if(!r) return;
-  const p=r.costProduct;
+  const lines=pRecipeLinesForScaledIngredients(r);
   document.getElementById("recipeDetail").innerHTML=`
     <div class="recipe-detail-head">
       <div>
-        <p class="eyebrow">${r.yield||"Yield TBD"}</p>
+        <p class="eyebrow">${Math.round(productionYield(r))} ${unitLabel(r)}</p>
         <h3>${r.name}</h3>
-        <p class="muted">${r.source||""}</p>
+        <p class="muted">Kitchen mode: no accounting, just scaled ingredients and steps.</p>
       </div>
-      <div class="detail-side">
+      <div class="detail-side kitchen-side">
         ${batchControlHtml(r)}
-        <div class="detail-cost">
-          <span>Production Cost</span>
-          <strong>${money(batchCostForRecipe(r))}</strong>
-          <small>${money(perCookieForRecipe(r))} each • ${money(perDozenForRecipe(r))}/dozen</small>
+        <div class="kitchen-yield-card">
+          <span>Making</span>
+          <strong>${selectedBatches(r)} batch${selectedBatches(r)===1?"":"es"}</strong>
+          <small>${Math.round(productionYield(r))} ${unitLabel(r)} estimated</small>
         </div>
       </div>
     </div>
     <div class="detail-grid">
       <section>
-        <h4>Ingredients</h4>
+        <h4>Scaled Ingredients</h4>
         <ul class="check-list">
-          ${(r.ingredients||[]).map(i=>`<li><label><input type="checkbox"><span>${i}</span></label></li>`).join("")}
+          ${lines.map(i=>`<li><label><input type="checkbox"><span>${i}</span></label></li>`).join("")}
         </ul>
       </section>
       <section>
@@ -306,27 +334,27 @@ function renderRecipeDetail(){
 function renderCostCards(){
   const all=mergedRecipes();
   document.getElementById("recipeCards").innerHTML=all.map(r=>{
-    const p=r.costProduct;
-    const cost=batchCostForRecipe(r), pc=perCookieForRecipe(r), pd=perDozenForRecipe(r), f=flags(p);
+    const cost=batchCostForRecipe(r), revenue=estimatedRevenue(r), profit=estimatedProfit(r), y=productionYield(r);
     return`
-      <article class="cost-card ${!p||cost<=0?"needs-cleanup":""}">
+      <article class="cost-card ${!r.costProduct||cost<=0?"needs-cleanup":""}">
         <div class="cost-top">
           <div>
-            <p class="eyebrow">${p?`${selectedBatches(r)} ${selectedBatches(r)===1?"batch":"batches"}`:"text only"}</p>
+            <p class="eyebrow">${selectedBatches(r)} ${selectedBatches(r)===1?"batch":"batches"}</p>
             <h3>${r.name}</h3>
-            <span>${p?(p.yieldLabel||r.yield):(r.yield||"Yield TBD")}</span>
+            <span>${Math.round(y)} ${unitLabel(r)} planned</span>
           </div>
           <strong>${money(cost)}</strong>
         </div>
         ${batchControlHtml(r,true)}
-        <div class="cost-stats">
-          <span><small>Each</small><b>${money(pc)}</b></span>
-          <span><small>Dozen</small><b>${money(pd)}</b></span>
-          <span><small>Flags</small><b>${f}</b></span>
+        ${priceControlHtml(r)}
+        <div class="cost-stats business-stats">
+          <span><small>Revenue</small><b>${money(revenue)}</b></span>
+          <span><small>Profit</small><b>${money(profit)}</b></span>
+          <span><small>Margin</small><b>${revenue?Math.round((profit/revenue)*100):0}%</b></span>
         </div>
         <details>
-          <summary>${p?"Ingredient cost breakdown":"No sheet match yet"}</summary>
-          ${p?(p.recipe||[]).map(l=>`<p><b>${l.ingredient}</b><span>${number(l.amount).toFixed(2)} ${l.unit||""} • ${money(l.ingredientCost)}</span></p>`).join(""):`<p><b>Recipe text loaded.</b><span>Add matching cost rows.</span></p>`}
+          <summary>${r.costProduct?"Ingredient cost breakdown":"No sheet match yet"}</summary>
+          ${r.costProduct?(r.costProduct.recipe||[]).map(l=>`<p><b>${l.ingredient}</b><span>${number(l.amount).toFixed(2)} ${l.unit||""} • ${money(l.ingredientCost)}</span></p>`).join(""):`<p><b>Recipe text loaded.</b><span>Add matching cost rows.</span></p>`}
         </details>
       </article>`;
   }).join("");
@@ -341,113 +369,9 @@ function renderIngredients(){
     </article>
   `).join(""):`<div class="empty-state">No ingredient costs loaded yet.</div>`;
 }
-function renderCleanup(){
-  const rows=mergedRecipes().map(r=>({r,p:r.costProduct,f:flags(r.costProduct),cost:batchCostForRecipe(r)})).filter(x=>!x.p||x.f>0||x.cost<=0).sort((a,b)=>(b.f-a.f)||(a.cost-b.cost));
-  document.getElementById("cleanupList").innerHTML=rows.length?rows.map(x=>`
-    <div class="list-row">
-      <div><strong>${x.r.name}</strong><span>${!x.p?"No sheet match found yet — check tab/name format":`${x.f} zero amount/cost lines • ${selectedBatches(x.r)} batch • ${money(x.cost)}`}</span></div>
-      <em class="${x.p&&x.cost>0?"warn":"bad"}">${x.p?"Review":"Link"}</em>
-    </div>`).join(""):`<div class="empty-state">No obvious cleanup flags.</div>`;
-  const p=pricedRecipes();
-  const high=[...p].sort((a,b)=>perCookieForRecipe(b)-perCookieForRecipe(a))[0],low=[...p].sort((a,b)=>perCookieForRecipe(a)-perCookieForRecipe(b))[0];
-  document.getElementById("costExtremes").innerHTML=[
-    high&&["Most expensive",high.name,`${money(perCookieForRecipe(high))}/cookie • ${money(perDozenForRecipe(high))}/dozen`],
-    low&&["Least expensive",low.name,`${money(perCookieForRecipe(low))}/cookie • ${money(perDozenForRecipe(low))}/dozen`],
-    ["Production cost",money(mergedRecipes().reduce((s,r)=>s+batchCostForRecipe(r),0)),"All selected batches"],
-    ["Total batches",mergedRecipes().reduce((s,r)=>s+selectedBatches(r),0),"Across recipe cards"]
-  ].filter(Boolean).map(x=>`<div class="list-row"><div><strong>${x[0]}</strong><span>${x[2]}</span></div><b>${x[1]}</b></div>`).join("");
-}
-
-
-function normalizeOrder(raw){
-  const source=(raw.platform||raw.source||raw.channel||raw.origin||"Manual").toString();
-  const id=raw.id||raw.orderId||raw.order_id||raw.receiptId||raw.name||`${source}-${Math.random().toString(36).slice(2,7)}`;
-  const customer=raw.customer||raw.customerName||raw.buyerName||raw.recipient||"Unknown customer";
-  const due=raw.due||raw.dueDate||raw.pickupDate||raw.fulfillmentDate||raw.shipBy||raw.createdAt||"";
-  const status=(raw.status||raw.state||"new").toString();
-  const total=number(raw.total||raw.totalMoney||raw.amount||raw.grandTotal||0);
-  const items=(raw.items||raw.lineItems||raw.line_items||[]).map(item=>({
-    name:item.name||item.title||item.variationName||item.itemName||"Unknown item",
-    quantity:number(item.quantity||item.qty||1)||1,
-    modifiers:item.modifiers||item.options||item.variations||[],
-    raw:item
-  }));
-  return {id,source,customer,due,status,total,items,raw};
-}
-
-function allOrders(){
-  return [
-    ...(dashboardData.orders||[]),
-    ...(dashboardData.squareOrders||[]),
-    ...(dashboardData.etsyOrders||[])
-  ].map(normalizeOrder);
-}
-
-function findRecipeForItem(item){
-  const fake={name:item.name,aliases:[item.name]};
-  let matched=findCostProduct(fake);
-  if(matched){
-    const recipe=mergedRecipes().find(r=>r.costProduct===matched || norm(r.costProduct?.name)===norm(matched.name));
-    if(recipe) return recipe;
-  }
-  let best=null, bestScore=0;
-  mergedRecipes().forEach(r=>{
-    const score=Math.max(
-      tokenScore(item.name,r.name),
-      ...(r.aliases||[]).map(a=>tokenScore(item.name,a))
-    );
-    if(score>bestScore){bestScore=score;best=r;}
-  });
-  return bestScore>=0.45?best:null;
-}
-
-function buildOrderIntelligence(){
-  const orders=allOrders();
-  const recipeDemand={};
-  const unmatched=[];
-  orders.forEach(order=>{
-    order.items.forEach(item=>{
-      const recipe=findRecipeForItem(item);
-      if(!recipe){
-        unmatched.push({order,item});
-        return;
-      }
-      const key=recipe.key;
-      if(!recipeDemand[key]) recipeDemand[key]={recipe,quantity:0,orders:[]};
-      recipeDemand[key].quantity+=item.quantity;
-      recipeDemand[key].orders.push({order,item});
-    });
-  });
-  return {orders,recipeDemand:Object.values(recipeDemand),unmatched};
-}
-
-function buildProductionPlanFromOrders(){
-  const intel=buildOrderIntelligence();
-  return intel.recipeDemand.map(row=>{
-    const yieldCount=extractYieldNumber(row.recipe.costProduct?.yieldLabel||row.recipe.yield)||1;
-    const batchesNeeded=Math.max(1,Math.ceil(row.quantity/yieldCount));
-    const plannedBatches=selectedBatches(row.recipe);
-    const delta=batchesNeeded-plannedBatches;
-    return {...row,yieldCount,batchesNeeded,plannedBatches,delta};
-  }).sort((a,b)=>b.delta-a.delta || b.quantity-a.quantity);
-}
-
-function buildBrain(){
-  const all=mergedRecipes();
-  const orderIntel=buildOrderIntelligence();
-  const productionPlan=buildProductionPlanFromOrders();
-  const costed=all.filter(r=>r.costProduct);
-  const zeroCost=all.filter(r=>!r.costProduct || batchCostForRecipe(r)<=0);
-  const flagged=all.filter(r=>r.costProduct && flags(r.costProduct)>0);
-  const productionCost=all.reduce((s,r)=>s+batchCostForRecipe(r),0);
-  const totalBatches=all.reduce((s,r)=>s+selectedBatches(r),0);
-  const priced=all.filter(r=>batchCostForRecipe(r)>0);
-  const avgCookie=priced.length?priced.reduce((s,r)=>s+perCookieForRecipe(r),0)/priced.length:0;
-  const expensive=[...priced].sort((a,b)=>perCookieForRecipe(b)-perCookieForRecipe(a)).slice(0,3);
-  const bestValue=[...priced].sort((a,b)=>perCookieForRecipe(a)-perCookieForRecipe(b)).slice(0,3);
-
+function buildIngredientTotals(){
   const ingredientTotals={};
-  all.forEach(r=>{
+  mergedRecipes().forEach(r=>{
     const p=r.costProduct;
     if(!p) return;
     const sheetBatch=sheetBatches(p);
@@ -461,123 +385,74 @@ function buildBrain(){
       ingredientTotals[key].cost += number(line.ingredientCost)*multiplier;
     });
   });
-
-  const shopping=Object.values(ingredientTotals).filter(x=>x.amount>0).sort((a,b)=>b.cost-a.cost).slice(0,18);
-  const recommendations=[];
-
-  if(orderIntel.orders.length){
-    recommendations.push({
-      type:"success",
-      title:"Orders are flowing",
-      text:`Snack IQ sees ${orderIntel.orders.length} order${orderIntel.orders.length===1?"":"s"} and ${productionPlan.length} matched recipe demand group${productionPlan.length===1?"":"s"}.`
-    });
-    const under=productionPlan.filter(p=>p.delta>0);
-    if(under.length){
-      recommendations.push({
-        type:"danger",
-        title:"Batch counts may be too low",
-        text:`Increase batches for ${under.slice(0,3).map(p=>`${p.recipe.name} (+${p.delta})`).join(", ")} based on current order quantities.`
-      });
-    } else {
-      recommendations.push({
-        type:"success",
-        title:"Batch plan covers orders",
-        text:"Current batch counts appear to cover matched order demand."
-      });
-    }
-    if(orderIntel.unmatched.length){
-      recommendations.push({
-        type:"warning",
-        title:"Unmatched Square/Etsy items",
-        text:`${orderIntel.unmatched.length} order item${orderIntel.unmatched.length===1?"":"s"} need a recipe/product name mapping.`
-      });
-    }
-  } else {
-    recommendations.push({
-      type:"warning",
-      title:"Square-ready, not Square-fed yet",
-      text:"When Square orders are connected, Snack IQ will convert line items into recipes, batches, shopping needs, and Caleb’s next actions."
-    });
-  }
-
-  if(zeroCost.length) recommendations.push({
-    type:"danger",
-    title:"Fix cost links first",
-    text:`${zeroCost.length} recipes have no usable cost yet. This blocks true margin math.`
-  });
-  if(flagged.length) recommendations.push({
-    type:"warning",
-    title:"Clean ingredient mismatches",
-    text:`${flagged.length} recipes have zero-cost ingredient lines. This is usually naming like Vanilla vs Pure Vanilla Extract or sugar typos.`
-  });
-  if(expensive[0]) recommendations.push({
-    type:"money",
-    title:"Watch the expensive recipe",
-    text:`${expensive[0].name} is currently highest cost at ${money(perCookieForRecipe(expensive[0]))} each. Price it carefully.`
-  });
-  if(bestValue[0]) recommendations.push({
-    type:"success",
-    title:"Best margin candidate",
-    text:`${bestValue[0].name} is currently lowest cost at ${money(perCookieForRecipe(bestValue[0]))} each. Good candidate for boxes or promos.`
-  });
-
-  return {all,costed,zeroCost,flagged,productionCost,totalBatches,avgCookie,expensive,bestValue,shopping,recommendations,orderIntel,productionPlan};
+  return Object.values(ingredientTotals).filter(x=>x.amount>0).sort((a,b)=>b.cost-a.cost);
 }
-
+function renderCleanup(){
+  const rows=mergedRecipes().map(r=>({r,p:r.costProduct,f:flags(r.costProduct),cost:batchCostForRecipe(r)})).filter(x=>!x.p||x.f>0||x.cost<=0).sort((a,b)=>(b.f-a.f)||(a.cost-b.cost));
+  document.getElementById("cleanupList").innerHTML=rows.length?rows.map(x=>`
+    <div class="list-row">
+      <div><strong>${x.r.name}</strong><span>${!x.p?"No sheet match found yet":`${x.f} zero amount/cost lines • ${selectedBatches(x.r)} batch • ${money(x.cost)}`}</span></div>
+      <em class="${x.p&&x.cost>0?"warn":"bad"}">${x.p?"Review":"Link"}</em>
+    </div>`).join(""):`<div class="empty-state">No obvious cleanup flags.</div>`;
+  const all=mergedRecipes();
+  const high=[...all].filter(r=>costEach(r)>0).sort((a,b)=>costEach(b)-costEach(a))[0];
+  const low=[...all].filter(r=>costEach(r)>0).sort((a,b)=>costEach(a)-costEach(b))[0];
+  document.getElementById("costExtremes").innerHTML=[
+    high&&["Most expensive",high.name,`${money(costEach(high))}/item • ${money(costDozen(high))}/dozen`],
+    low&&["Least expensive",low.name,`${money(costEach(low))}/item • ${money(costDozen(low))}/dozen`],
+    ["Production cost",money(all.reduce((s,r)=>s+batchCostForRecipe(r),0)),"All selected batches"],
+    ["Projected profit",money(all.reduce((s,r)=>s+estimatedProfit(r),0)),"Using current sell prices"]
+  ].filter(Boolean).map(x=>`<div class="list-row"><div><strong>${x[0]}</strong><span>${x[2]}</span></div><b>${x[1]}</b></div>`).join("");
+}
+function buildBrain(){
+  const all=mergedRecipes();
+  const productionCost=all.reduce((s,r)=>s+batchCostForRecipe(r),0);
+  const revenue=all.reduce((s,r)=>s+estimatedRevenue(r),0);
+  const zeroCost=all.filter(r=>!r.costProduct||batchCostForRecipe(r)<=0);
+  const ingredientTotals=buildIngredientTotals().slice(0,18);
+  const recs=[];
+  if(zeroCost.length) recs.push({type:"warning",title:"Finish cost linking",text:`${zeroCost.length} recipes still need usable cost matches before profit is fully real.`});
+  const high=[...all].filter(r=>costEach(r)>0).sort((a,b)=>costEach(b)-costEach(a))[0];
+  if(high) recs.push({type:"money",title:"Most expensive to make",text:`${high.name} is ${money(costEach(high))} per item. Price carefully or bundle intentionally.`});
+  const topBatch=[...all].sort((a,b)=>selectedBatches(b)-selectedBatches(a))[0];
+  if(topBatch && selectedBatches(topBatch)>1) recs.push({type:"success",title:"Main production focus",text:`${topBatch.name} has ${selectedBatches(topBatch)} batches selected. Start prep here if it needs cooling or chilling.`});
+  recs.push({type:"success",title:"Kitchen mode is cleaner",text:"Cook Mode now only shows scaled ingredients and steps. Costs live in Production Costs where they belong."});
+  return {all,productionCost,revenue,profit:revenue-productionCost,zeroCost,ingredientTotals,recs};
+}
 function renderBrain(){
   const brain=buildBrain();
   document.getElementById("brainSummary").innerHTML=`
-    <article><span>Orders Seen</span><strong>${brain.orderIntel.orders.length}</strong><small>Square/Etsy/manual ready</small></article>
-    <article><span>Production Cost</span><strong>${money(brain.productionCost)}</strong><small>${brain.totalBatches} selected batches</small></article>
-    <article><span>Recipe Matches</span><strong>${brain.costed.length}/${brain.all.length}</strong><small>Google Sheet linked</small></article>
-    <article><span>Cleanup</span><strong>${brain.zeroCost.length + brain.flagged.length}</strong><small>things blocking smarter math</small></article>
+    <article><span>Production Cost</span><strong>${money(brain.productionCost)}</strong><small>selected batches</small></article>
+    <article><span>Projected Revenue</span><strong>${money(brain.revenue)}</strong><small>editable sell prices</small></article>
+    <article><span>Projected Profit</span><strong>${money(brain.profit)}</strong><small>cost planner estimate</small></article>
+    <article><span>Cleanup</span><strong>${brain.zeroCost.length}</strong><small>cost links to finish</small></article>
   `;
-
-  document.getElementById("brainCards").innerHTML=brain.recommendations.map(item=>`
+  document.getElementById("brainCards").innerHTML=brain.recs.map(item=>`
     <article class="brain-card ${item.type}">
       <p>${item.title}</p>
       <span>${item.text}</span>
     </article>
   `).join("");
-
-  const planRows=brain.productionPlan.length ? brain.productionPlan.map(row=>`
-    <article>
-      <b>${row.recipe.name}</b>
-      <span>${row.quantity} ordered • ${row.batchesNeeded} batch${row.batchesNeeded===1?"":"es"} needed</span>
-      <small>${row.delta>0?`Increase by ${row.delta}`:row.delta<0?`${Math.abs(row.delta)} extra batch${Math.abs(row.delta)===1?"":"es"} planned`:"Batch count looks right"}</small>
-    </article>
-  `).join("") : `<div class="empty-state">No Square/Etsy orders connected yet. This section will become Caleb's production queue once orders are flowing.</div>`;
-
   document.getElementById("shoppingList").innerHTML=`
     <div class="panel-head slim">
       <div>
-        <p class="eyebrow">Square-Ready Production Plan</p>
-        <h2>Order Brain</h2>
-        <p class="muted">When Square is connected, this converts line items into recipes, batches, and next actions.</p>
-      </div>
-    </div>
-    <div class="shopping-grid order-brain-grid">${planRows}</div>
-
-    <div class="panel-head slim second">
-      <div>
-        <p class="eyebrow">Smart Shopping / Prep</p>
-        <h2>Top Ingredients Needed</h2>
-        <p class="muted">Based on current batch controls. Stock-on-hand can come next.</p>
+        <p class="eyebrow">Smart Prep List</p>
+        <h2>Ingredients Needed for Selected Batches</h2>
+        <p class="muted">Based on current batch counts. This is the kitchen shopping/prep view.</p>
       </div>
     </div>
     <div class="shopping-grid">
-      ${brain.shopping.length?brain.shopping.map(item=>`
+      ${brain.ingredientTotals.length?brain.ingredientTotals.map(item=>`
         <article>
           <b>${item.name}</b>
-          <span>${item.amount.toFixed(2)} ${item.unit}</span>
+          <span>${item.amount.toFixed(2).replace(/\.?0+$/,"")} ${item.unit}</span>
           <small>${money(item.cost)} planned cost</small>
         </article>
       `).join(""):`<div class="empty-state">No ingredient totals yet because costed recipes are not linked.</div>`}
     </div>
   `;
 }
-
-function renderAll(rebind=true){
+function renderAll(){
   renderOverview();
   renderRecipeList(document.getElementById("recipeSearch")?.value||"");
   renderRecipeDetail();
@@ -585,7 +460,7 @@ function renderAll(rebind=true){
   renderIngredients();
   renderCleanup();
   renderBrain();
-  bindBatchControls();
+  bindControls();
 }
 async function init(){
   let live=false,msg="";
@@ -595,6 +470,6 @@ async function init(){
   document.getElementById("recipeSearch")?.addEventListener("input",e=>renderRecipeList(e.target.value));
   document.getElementById("refreshButton")?.addEventListener("click",()=>window.location.reload());
   document.getElementById("printTodayButton")?.addEventListener("click",()=>window.print());
-  document.getElementById("brainButton")?.addEventListener("click",()=>{renderBrain();});
+  document.getElementById("brainButton")?.addEventListener("click",()=>renderBrain());
 }
 init();

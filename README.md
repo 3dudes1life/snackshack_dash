@@ -91,3 +91,33 @@ If the backend returns an `orders` or `squareOrders` array, Snack IQ 4.0 will:
 
 ### Security note
 Do not put Square access tokens in GitHub Pages. Square keys must live in Apps Script, Cloudflare Worker, Netlify Function, or another secure backend.
+
+
+## v18 Kitchen / Production Split
+
+This version separates the two workflows:
+
+### Cook Mode
+- No accounting clutter.
+- No cost per cookie.
+- No cost per dozen.
+- No cleanup flags.
+- Batch controls only.
+- Ingredients scale by selected batches.
+- Steps stay clean.
+
+### Production Costs
+- Business/planning only.
+- Batch controls.
+- Production yield.
+- Production cost.
+- Editable sell price.
+- Estimated revenue.
+- Estimated profit.
+- Margin.
+
+### Snack IQ Brain
+- Reads selected batches.
+- Builds smart prep/shopping list.
+- Summarizes production cost, revenue, and profit.
+- Keeps cleanup recommendations separate from kitchen instructions.

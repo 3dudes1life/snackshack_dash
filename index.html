@@ -5,25 +5,25 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 <title>C-Dawg's Snack Shack Command Center</title>
 <meta name="theme-color" content="#f7f1df"/>
-<link rel="manifest" href="manifest.webmanifest?v=17-snack-iq-4"/>
-<link rel="icon" href="icon.svg?v=17-snack-iq-4" type="image/svg+xml"/>
-<link rel="apple-touch-icon" href="icon.svg?v=17-snack-iq-4"/>
+<link rel="manifest" href="manifest.webmanifest?v=18-kitchen-production-split"/>
+<link rel="icon" href="icon.svg?v=18-kitchen-production-split" type="image/svg+xml"/>
+<link rel="apple-touch-icon" href="icon.svg?v=18-kitchen-production-split"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="src/styles.css?v=17-snack-iq-4"/>
+<link rel="stylesheet" href="src/styles.css?v=18-kitchen-production-split"/>
 </head>
 <body>
 <div class="app-shell">
   <aside class="sidebar">
     <a class="brand" href="#top">
-      <img src="icon.svg?v=17-snack-iq-4" alt="C-Dawg's"/>
+      <img src="icon.svg?v=18-kitchen-production-split" alt="C-Dawg's"/>
       <span>C-Dawg's</span>
     </a>
     <nav class="side-nav">
       <a href="#top">Dashboard</a>
       <a href="#cook">Cook Mode</a>
-      <a href="#costs">Recipe Costs</a>
+      <a href="#costs">Production Costs</a>
       <a href="#ingredients">Ingredients</a>
       <a href="#cleanup">Cleanup</a>
       <a href="#report">Snack IQ</a>
@@ -47,8 +47,8 @@
       <div class="panel-head">
         <div>
           <p class="eyebrow">Cook Mode</p>
-          <h2>Recipe Workspace</h2>
-          <p class="muted">Pick a recipe on the left. Cook from the clean recipe panel on the right.</p>
+          <h2>Kitchen Recipe Workspace</h2>
+          <p class="muted">Pick a recipe. Change batches. Ingredients scale for Caleb while the steps stay clean.</p>
         </div>
         <input id="recipeSearch" class="search-input" placeholder="Search recipes or ingredients..." />
       </div>
@@ -61,9 +61,9 @@
     <section id="costs" class="panel">
       <div class="panel-head">
         <div>
-          <p class="eyebrow">Recipe Costs</p>
-          <h2>Costed Recipes</h2>
-          <p class="muted">Compact cost cards that wrap correctly on every screen size.</p>
+          <p class="eyebrow">Production Costs</p>
+          <h2>Production Cost Planner</h2>
+          <p class="muted">Business planning only: batches, yield, production cost, estimated revenue, and profit.</p>
         </div>
         <span class="count-pill" id="recipeCountPill">Loading</span>
       </div>
@@ -108,8 +108,8 @@
       <div class="panel-head">
         <div>
           <p class="eyebrow">Snack IQ 4.0 Brain</p>
-          <h2>Caleb's Bakery Brain 4.0</h2>
-          <p class="muted">Square-ready production brain, order intelligence, cost warnings, cleanup priorities, and shopping hints.</p>
+          <h2>Bakery Manager Brain 4.0</h2>
+          <p class="muted">Square-ready production brain: what to bake, what it costs, what ingredients are needed, and what Caleb should do next.</p>
         </div>
         <button id="brainButton" class="print-btn">Run Brain</button>
       </div>
@@ -120,8 +120,8 @@
   </main>
 </div>
 
-<script src="data/recipe-library.js?v=17-snack-iq-4"></script>
-<script src="data/config.js?v=17-snack-iq-4"></script>
-<script src="src/app.js?v=17-snack-iq-4"></script>
+<script src="data/recipe-library.js?v=18-kitchen-production-split"></script>
+<script src="data/config.js?v=18-kitchen-production-split"></script>
+<script src="src/app.js?v=18-kitchen-production-split"></script>
 </body>
 </html>
