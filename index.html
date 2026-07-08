@@ -5,29 +5,29 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 <title>C-Dawg's Snack Shack Command Center</title>
 <meta name="theme-color" content="#f7f1df"/>
-<link rel="manifest" href="manifest.webmanifest?v=24-dual-pricing-brain"/>
-<link rel="icon" href="icon.svg?v=24-dual-pricing-brain" type="image/svg+xml"/>
-<link rel="apple-touch-icon" href="icon.svg?v=24-dual-pricing-brain"/>
+<link rel="manifest" href="manifest.webmanifest?v=25-brain-6"/>
+<link rel="icon" href="icon.svg?v=25-brain-6" type="image/svg+xml"/>
+<link rel="apple-touch-icon" href="icon.svg?v=25-brain-6"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="src/styles.css?v=24-dual-pricing-brain"/>
+<link rel="stylesheet" href="src/styles.css?v=25-brain-6"/>
 </head>
 <body>
 <div class="app-shell">
   <aside class="sidebar">
     <a class="brand" href="#top">
-      <img src="icon.svg?v=24-dual-pricing-brain" alt="C-Dawg's"/>
+      <img src="icon.svg?v=25-brain-6" alt="C-Dawg's"/>
       <span>C-Dawg's</span>
     </a>
     <nav class="side-nav">
       <a href="#top">Dashboard</a>
       <a href="#cook">Cook Mode</a>
       <a href="#costs">Production Planner</a>
-      <a href="#pricing">Pricing</a>
+      <a href="#pricing">Dual Pricing</a>
       <a href="#ingredients">Ingredients</a>
       <a href="#cleanup">Cleanup</a>
-      <a href="#report">Snack IQ</a>
+      <a href="#report">Brain 6.0</a>
     </nav>
     <button id="refreshButton" class="refresh-btn">Refresh</button>
   </aside>
@@ -41,6 +41,23 @@
       </div>
       <button id="printTodayButton" class="print-btn">Print Recipe</button>
     </section>
+
+
+
+    <section id="report" class="panel brain-panel">
+      <div class="panel-head">
+        <div>
+          <p class="eyebrow">Snack IQ 6.0 Brain</p>
+          <h2>Bakery Manager Brain 6.0</h2>
+          <p class="muted">Bakery operating brain: Corporate DZ vs Square Retail pricing, margins, ROI, production batches, Smart Prep, and Square-ready logic.</p>
+        </div>
+        <button id="brainButton" class="print-btn">Run Brain 6.0</button>
+      </div>
+      <div id="brainSummary" class="brain-summary"></div>
+      <div id="brainCards" class="brain-grid"></div>
+      <div id="shoppingList" class="shopping-list"></div>
+    </section>
+
 
     <section id="overview" class="metrics-grid"></section>
 
@@ -117,25 +134,11 @@
         <div id="costExtremes" class="list-stack"></div>
       </div>
     </section>
-
-    <section id="report" class="panel brain-panel">
-      <div class="panel-head">
-        <div>
-          <p class="eyebrow">Snack IQ 5.5 Brain</p>
-          <h2>Bakery Manager Brain 5.5</h2>
-          <p class="muted">Dual-pricing bakery brain: recipe cost, corporate DZ pricing, Square retail pricing, margins, ROI, and prep needs.</p>
-        </div>
-        <button id="brainButton" class="print-btn">Run Brain 5.5</button>
-      </div>
-      <div id="brainSummary" class="brain-summary"></div>
-      <div id="brainCards" class="brain-grid"></div>
-      <div id="shoppingList" class="shopping-list"></div>
-    </section>
   </main>
 </div>
 
-<script src="data/recipe-library.js?v=24-dual-pricing-brain"></script>
-<script src="data/config.js?v=24-dual-pricing-brain"></script>
-<script src="src/app.js?v=24-dual-pricing-brain"></script>
+<script src="data/recipe-library.js?v=25-brain-6"></script>
+<script src="data/config.js?v=25-brain-6"></script>
+<script src="src/app.js?v=25-brain-6"></script>
 </body>
 </html>

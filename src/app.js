@@ -764,7 +764,7 @@ function buildBrain(){
   if(bestActive){
     recs.push({type:"success",title:"Best profit driver",text:`${bestActive.name} currently projects ${money(estimatedProfit(bestActive))} profit in active pricing mode.`});
   }
-  recs.push({type:"success",title:"Square-safe pricing logic",text:"Square prices are treated as retail sales data. Corporate DZ pricing stays separate, so Square will not overwrite your pricing strategy."});
+  recs.push({type:"success",title:"Square-safe pricing logic",text:"Brain 6.0 keeps Corporate DZ and Square Retail pricing separate, compares both channels, and stays ready for live Square orders without overwriting your pricing strategy."});
 
   return {
     all, planned, productionCost, activeRevenue, activeProfit,

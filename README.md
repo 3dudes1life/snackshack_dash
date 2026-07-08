@@ -239,3 +239,25 @@ Supports:
 Important:
 Square catalog pricing should be treated as sales/catalog data, not the only pricing authority.
 Google Sheets can remain the strategic pricing authority.
+
+
+## v25 Brain 6.0
+
+This version keeps everything from Dual Pricing Brain 5.5 and moves the AI Brain to the top of the dashboard.
+
+Included:
+- Brain 6.0 section at the top, before recipe/workspace sections
+- Corporate DZ pricing layer
+- Square DZ pricing layer
+- Square Each pricing layer
+- Active pricing mode per recipe
+- Corporate vs Square margin comparison
+- ROI
+- Profit per dozen
+- Suggested dozen price for target margin
+- Smart Prep ingredients from Production Planner batches only
+- Kitchen batches remain separate from Production Planner batches
+- Square-ready logic without storing Square tokens in GitHub Pages
+
+Recommended upload:
+Replace the entire GitHub Pages folder contents with this ZIP contents.
