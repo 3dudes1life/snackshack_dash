@@ -1,0 +1,13 @@
+{
+  "name": "cdawgs-snackshack-commandcenter",
+  "version": "1.0.0",
+  "description": "C-Dawg's Snack Shack order hub, production queue, ingredient costing, and profit dashboard.",
+  "main": "index.html",
+  "scripts": {
+    "start": "python3 -m http.server 5173",
+    "serve": "python3 -m http.server 5173"
+  },
+  "keywords": ["c-dawgs-snack-shack", "square", "etsy", "dashboard", "orders", "cookie-costing", "cottage-food"],
+  "author": "C-Dawg's Snack Shack",
+  "license": "MIT"
+}
