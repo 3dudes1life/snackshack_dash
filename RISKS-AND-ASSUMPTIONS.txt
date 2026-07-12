@@ -1,0 +1,4 @@
+- This package is intended as a targeted replacement for the visible Cook Mode ingredient UI only.
+- The Today card was preserved.
+- No backend, deployment, or commit actions were performed.
+- Local preview must be refreshed to pick up the updated assets.

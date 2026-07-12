@@ -1,0 +1,4 @@
+- Repaired the visible Cook Mode ingredient rows to show quantity, unit, and ingredient name.
+- Removed checkboxes from the scaled ingredient list.
+- Preserved the Today card and the existing batch scaling behavior.
+- Adjusted unit grammar so singular/plural forms read as 1 cup, 1/2 cup, 1 tbsp, 1 tsp, 2 cups, 2 tbsp, and 2 tsp.

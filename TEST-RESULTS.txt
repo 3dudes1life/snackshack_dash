@@ -1,0 +1,5 @@
+Verified in the live browser preview for Rice Krispie Treats at 1, 2, and 3 batches.
+Observed rows:
+- 1 batch: 1/4 cup Salted Butter, 1 bag Marshmallows, 6 cups Rice Krispies Cereal
+- 2 batches: 1/2 cup Salted Butter, 2 bags Marshmallows, 12 cups Rice Krispies Cereal
+- 3 batches: 3/4 cup Salted Butter, 3 bags Marshmallows, 18 cups Rice Krispies Cereal

@@ -1,0 +1,4 @@
+Files included in this replacement package:
+- index.html
+- src/app.js
+- src/styles.css
