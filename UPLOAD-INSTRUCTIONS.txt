@@ -1,0 +1,22 @@
+SNACK SHACK FIXED UPLOAD
+
+This package promotes the corrected app.js and styles.css into the actual paths
+used by the dashboard:
+
+- src/app.js
+- src/styles.css
+
+It also removes the accidental root-level duplicate files.
+
+EXPECTED COOK MODE RESULT:
+- No ingredient checkboxes
+- Visible quantity + unit + ingredient name
+- Amounts update with Recipe Batch + / -
+
+UPLOAD:
+1. Unzip SnackShack-FIXED-UPLOAD.zip.
+2. Open the snackshack_dash folder inside.
+3. Upload ALL contents of that folder to the ROOT of the GitHub repository.
+4. Allow GitHub to replace matching files.
+5. Confirm src/app.js and src/styles.css exist inside src/.
+6. Hard refresh the live dashboard with Command + Shift + R.

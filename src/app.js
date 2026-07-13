@@ -21,12 +21,75 @@ let dashboardData = {
   squareMessage: ""
 };
 
-const bakedRecipes = window.CDAWG_RECIPE_LIBRARY || [];
+function normalizeIngredientItem(item) {
+  if (item && typeof item === "object" && !Array.isArray(item)) {
+    return {
+      ingredient: String(item.ingredient || item.name || "").trim(),
+      amount: item.amount ?? item.quantity ?? item.qty ?? "",
+      unit: String(item.unit || "").trim()
+    };
+  }
+  return String(item || "").trim();
+}
+function normalizeRecipeSource(recipe) {
+  if (!recipe || typeof recipe !== "object") return { name: "", ingredients: [], steps: [] };
+  const ingredients = Array.isArray(recipe.ingredients) ? recipe.ingredients.map(normalizeIngredientItem) : [];
+  const steps = Array.isArray(recipe.steps) ? recipe.steps : (Array.isArray(recipe.instructions) ? recipe.instructions : []);
+  return {
+    ...recipe,
+    name: String(recipe.name || "").trim(),
+    ingredients,
+    steps,
+    yield: recipe.yield ?? (recipe.yieldLabel ? recipe.yieldLabel : ""),
+    yieldLabel: recipe.yieldLabel || (recipe.yield ? `${recipe.yield}${recipe.yieldUnit ? ` ${recipe.yieldUnit}` : ""}` : "")
+  };
+}
+function recipeNameMatches(a, b) {
+  const aNames = [a.name, ...(a.aliases || [])].filter(Boolean).map(norm);
+  const bNames = [b.name, ...(b.aliases || [])].filter(Boolean).map(norm);
+  return aNames.some(name => bNames.includes(name)) || aNames.some(name => bNames.some(other => other.includes(name) || name.includes(other)));
+}
+function buildRecipeCatalog() {
+  const structuredRecipes = Array.isArray(window.CDAWG_RECIPE_LIBRARY_STRUCTURED?.recipes) ? window.CDAWG_RECIPE_LIBRARY_STRUCTURED.recipes : [];
+  const fallbackRecipes = Array.isArray(window.CDAWG_RECIPE_LIBRARY) ? window.CDAWG_RECIPE_LIBRARY : (window.CDAWG_RECIPE_LIBRARY?.recipes || []);
+  const normalizedStructured = structuredRecipes.map(normalizeRecipeSource);
+  const normalizedFallback = fallbackRecipes.map(normalizeRecipeSource);
+  const merged = normalizedFallback.map(fallbackRecipe => {
+    const match = normalizedStructured.find(recipe => recipeNameMatches(fallbackRecipe, recipe));
+    if (!match) return fallbackRecipe;
+    return {
+      ...fallbackRecipe,
+      ...match,
+      name: fallbackRecipe.name || match.name,
+      ingredients: Array.isArray(match.ingredients) && match.ingredients.length ? match.ingredients : fallbackRecipe.ingredients,
+      steps: Array.isArray(match.steps) && match.steps.length ? match.steps : fallbackRecipe.steps,
+      yield: match.yield ?? fallbackRecipe.yield,
+      yieldLabel: match.yieldLabel || fallbackRecipe.yieldLabel || match.yield || fallbackRecipe.yield
+    };
+  });
+  const seen = new Set();
+  const finalRecipes = [];
+  merged.forEach(recipe => {
+    const key = norm(recipe.name);
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    finalRecipes.push(recipe);
+  });
+  normalizedStructured.forEach(recipe => {
+    const key = norm(recipe.name);
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    finalRecipes.push(recipe);
+  });
+  return finalRecipes.sort((a,b) => a.name.localeCompare(b.name));
+}
+const bakedRecipes = buildRecipeCatalog();
 let selectedRecipeKey = "";
 let lastSyncAt = null;
 let syncTimer = null;
 let countdownTimer = null;
 let nextSync = 60;
+let hasBackendData = false;
 
 const productionBatchState = loadState("cdawgProductionBatchState", "cdawgBatchState");
 const kitchenBatchState = loadState("cdawgKitchenBatchState");
@@ -150,6 +213,7 @@ async function loadBackendData() {
     squareStatus: live.squareStatus || "unknown",
     squareMessage: live.squareMessage || ""
   };
+  hasBackendData = true;
 }
 
 function syncPanel(status, detail) {
@@ -181,6 +245,7 @@ async function liveRefresh() {
     renderAll();
     startCountdown();
   } catch (err) {
+    hasBackendData = false;
     console.error(err);
     syncPanel("Offline", String(err && err.message ? err.message : err));
   }
@@ -347,34 +412,70 @@ function formatScaledAmount(value) {
   if (Math.abs(n - Math.round(n)) < 0.001) return String(Math.round(n));
   return n.toFixed(2).replace(/\.?0+$/, "");
 }
+function pluralizeUnit(unit, amount) {
+  const text = String(unit || "").trim().toLowerCase();
+  if (!text) return "";
+  const numericAmount = number(amount);
+  const singular = numericAmount <= 1;
+  if (text === "cup") return singular ? "cup" : "cups";
+  if (text === "jar") return singular ? "jar" : "jars";
+  if (text === "box") return singular ? "box" : "boxes";
+  if (text === "bag") return singular ? "bag" : "bags";
+  if (text === "tbsp") return "tbsp";
+  if (text === "tsp") return "tsp";
+  if (text === "oz") return "oz";
+  if (text === "each") return "each";
+  return text.replace(/s$/, "") + (singular ? "" : "s");
+}
+function formatIngredientRow(quantity, unit, ingredient) {
+  const pieces = [quantity, unit, ingredient].filter(Boolean);
+  return pieces.join(" ");
+}
 function scaledIngredientText(raw, batches) {
   let text = String(raw || "").trim();
   if (!text) return text;
   if (/^(green food coloring|flaky|handwritten|no almond|as needed|optional)/i.test(text)) return text;
-  const lead = text.match(/^(\s*)((?:\d+\s+(?:and\s+)?\d+\/\d+)|(?:\d+\/\d+)|(?:\d+(?:\.\d+)?))(\s+)(.*)$/i);
-  if (lead) {
-    const parsed = parseFractionValue(lead[2]);
-    if (parsed !== null) return `${lead[1]}${formatScaledAmount(parsed * batches)}${lead[3]}${lead[4]}`;
-  }
-  return text.replace(/(\d+\s+(?:and\s+)?\d+\/\d+|\d+\/\d+|\d+(?:\.\d+)?)(\s*(?:cups?|tbsp|tablespoons?|tsp|teaspoons?|oz|ounces?|eggs?|egg yolks?|yolks?|bags?|bag|jars?|jar|boxes?|box)\b)/gi,
-    (match, amount, unit) => {
+  return text.replace(/(\b(?:\d+\s+(?:and\s+)?\d+\/\d+|\d+\/\d+|\d+(?:\.\d+)?))(?:\s+(whole|large|small|extra\s+large|extra-large|heaping|packed|level))?(?=\s*(?:cups?|tbsp|tablespoons?|tsp|teaspoons?|oz|ounces?|eggs?|egg yolks?|yolks?|bags?|bag|jars?|jar|boxes?|box)\b)/gi,
+    (match, amount) => {
       const parsed = parseFractionValue(amount);
-      return parsed === null ? match : `${formatScaledAmount(parsed * batches)}${unit}`;
+      return parsed === null ? match : formatScaledAmount(parsed * batches);
     });
 }
-function scaledIngredientLines(r) {
-  const p = r.costProduct;
+function scaledIngredientRows(r) {
   const batches = kitchenBatches(r);
-  if (p && (p.recipe || []).length) {
-    const sheetBatch = sheetBatches(p);
-    const multiplier = batches / sheetBatch;
-    return (p.recipe || []).map(line => {
-      const amt = number(line.amount) * multiplier;
-      const pretty = amt ? formatScaledAmount(amt) : "";
-      return `${pretty} ${line.unit || ""} ${line.ingredient}`.trim();
+  const ingredientList = Array.isArray(r.ingredients) ? r.ingredients : [];
+  const structuredItems = ingredientList.filter(item => item && typeof item === "object" && !Array.isArray(item) && (item.ingredient || item.name || item.amount !== undefined));
+  if (structuredItems.length) {
+    return structuredItems.map(item => {
+      const amount = number(item.amount);
+      const scaledAmount = amount * batches;
+      const quantity = formatScaledAmount(scaledAmount);
+      const unit = pluralizeUnit(item.unit, scaledAmount);
+      const ingredient = String(item.ingredient || item.name || "").trim();
+      return formatIngredientRow(quantity, unit, ingredient);
     });
   }
-  return (r.ingredients || []).map(item => scaledIngredientText(item, batches));
+  const stringItems = ingredientList.filter(item => typeof item === "string" || typeof item === "number");
+  if (stringItems.length) {
+    return stringItems.map(item => scaledIngredientText(item, batches));
+  }
+  const p = r.costProduct;
+  if (p && (p.recipe || []).length) {
+    const sheetBatch = sheetBatches(p);
+    const multiplier = batches / Math.max(sheetBatch, 1);
+    return (p.recipe || []).map(line => {
+      if (line && typeof line === "object" && !Array.isArray(line)) {
+        const amount = number(line.amount);
+        const scaledAmount = amount * multiplier;
+        const quantity = formatScaledAmount(scaledAmount);
+        const unit = pluralizeUnit(line.unit, scaledAmount);
+        const ingredient = String(line.ingredient || line.name || "").trim();
+        return formatIngredientRow(quantity, unit, ingredient);
+      }
+      return scaledIngredientText(String(line || ""), multiplier);
+    });
+  }
+  return ingredientList.map(item => scaledIngredientText(item, batches));
 }
 
 function batchControlHtml(r, compact = false, mode = "production") {
@@ -413,6 +514,44 @@ function renderStatus(live, msg) {
   if (title) title.textContent = live ? `${all.length} recipes ready for Caleb` : `${all.length} recipes loaded`;
   if (message) message.textContent = live ? `${dashboardData.ingredients.length} ingredient costs connected. Kitchen and Production batches are separate.` : (msg || "Built-in recipe cards are loaded.");
 }
+function renderTodayFocus() {
+  const container = document.getElementById("todayFocus");
+  if (!container) return;
+
+  const priorityItems = buildPriorityItems();
+  const bakePriority = priorityItems.find(item => item.label === "Bake First");
+  const matchingIssue = priorityItems.find(item => item.label === "Needs Match");
+  const dataUnavailable = !hasBackendData || ["not_connected", "error", "unknown"].includes(String(dashboardData.squareStatus || "unknown"));
+  const openValue = dataUnavailable ? null : openSquareValue();
+
+  container.innerHTML = `
+    <div class="panel-head">
+      <div>
+        <p class="eyebrow">What Caleb should do today</p>
+        <h2>Today at a glance</h2>
+        <p class="muted">A quick operational snapshot built from the current dashboard data.</p>
+      </div>
+    </div>
+    <div class="today-focus-grid">
+      <article class="today-focus-card">
+        <p class="eyebrow">Open value</p>
+        <strong>${dataUnavailable ? "Data unavailable" : money(openValue)}</strong>
+        <span>${dataUnavailable ? "Live Square data is not available right now" : "Current open orders + invoices"}</span>
+      </article>
+      <article class="today-focus-card warning">
+        <p class="eyebrow">Priority hint</p>
+        <strong>${dataUnavailable ? "Data unavailable" : (bakePriority ? bakePriority.title : "No current bake priority")}</strong>
+        <span>${dataUnavailable ? "Live demand data is not available right now" : (bakePriority ? bakePriority.detail : "No current bake priority")}</span>
+      </article>
+      <article class="today-focus-card alert">
+        <p class="eyebrow">Review needed</p>
+        <strong>${dataUnavailable ? "Data unavailable" : (matchingIssue ? matchingIssue.title : "No matching issues found")}</strong>
+        <span>${dataUnavailable ? "Live demand data is not available right now" : (matchingIssue ? matchingIssue.detail : "No matching issues found")}</span>
+      </article>
+    </div>
+  `;
+}
+
 function renderOverview() {
   const all = mergedRecipes();
   const linked = all.filter(r => r.costProduct).length;
@@ -436,7 +575,15 @@ function renderOverview() {
 }
 function renderRecipeList(filter = "") {
   const q = filter.trim().toLowerCase();
-  const all = mergedRecipes().filter(r => !q || r.name.toLowerCase().includes(q) || (r.ingredients || []).join(" ").toLowerCase().includes(q));
+  const all = mergedRecipes().filter(r => {
+    const ingredientText = (r.ingredients || []).map(item => {
+      if (item && typeof item === "object" && !Array.isArray(item)) {
+        return `${item.amount || ""} ${item.unit || ""} ${item.ingredient || item.name || ""}`;
+      }
+      return String(item || "");
+    }).join(" ").toLowerCase();
+    return !q || r.name.toLowerCase().includes(q) || ingredientText.includes(q);
+  });
   const list = document.getElementById("recipeList");
   if (!list) return;
   list.innerHTML = all.map(r => `<button class="recipe-row ${r.key === selectedRecipeKey ? "active" : ""}" data-key="${r.key}">
@@ -456,7 +603,7 @@ function renderRecipeDetail() {
   const r = activeRecipe();
   const detail = document.getElementById("recipeDetail");
   if (!r || !detail) return;
-  const lines = scaledIngredientLines(r);
+  const lines = scaledIngredientRows(r);
   detail.innerHTML = `<div class="recipe-detail-head">
     <div><p class="eyebrow">${Math.round(kitchenYield(r))} ${unitLabel(r)}</p><h3>${r.name}</h3><p class="muted">Kitchen batch only scales this recipe. It does not affect Production Planner or Smart Prep.</p></div>
     <div class="detail-side kitchen-side">${batchControlHtml(r,false,"kitchen")}
@@ -464,7 +611,7 @@ function renderRecipeDetail() {
     </div>
   </div>
   <div class="detail-grid">
-    <section><h4>Scaled Ingredients</h4><ul class="check-list">${lines.map(i => `<li><label><input type="checkbox"><span>${i}</span></label></li>`).join("")}</ul></section>
+    <section><h4>Scaled Ingredients</h4><ul class="ingredient-list">${lines.map(i => `<li class="ingredient-row">${i}</li>`).join("")}</ul></section>
     <section><h4>Steps</h4><ol class="steps-list">${(r.steps || []).map(s => `<li>${s}</li>`).join("")}</ol></section>
   </div>`;
 }
@@ -938,6 +1085,7 @@ function bindControls() {
   });
 }
 function renderAll() {
+  renderTodayFocus();
   renderOverview();
   renderRecipeList(document.getElementById("recipeSearch")?.value || "");
   renderRecipeDetail();
@@ -952,7 +1100,7 @@ function renderAll() {
 }
 async function init() {
   let live = false, msg = "";
-  try { await loadBackendData(); live = true; lastSyncAt = new Date(); } catch (e) { console.warn(e); msg = e.message; }
+  try { await loadBackendData(); live = true; lastSyncAt = new Date(); } catch (e) { hasBackendData = false; console.warn(e); msg = e.message; }
   renderStatus(live, msg);
   renderAll();
   startCountdown();

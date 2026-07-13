@@ -66,6 +66,13 @@ body{
   border-radius:var(--radius);
 }
 .hero-card{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:20px 22px}
+.today-focus-panel{display:grid;gap:12px}
+.today-focus-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.today-focus-card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px;box-shadow:var(--soft);display:grid;gap:6px;min-width:0}
+.today-focus-card.warning{background:#fff8e8;border-color:rgba(183,109,25,.2)}
+.today-focus-card.alert{background:#fff0ee;border-color:rgba(201,71,71,.2)}
+.today-focus-card strong{display:block;font-size:1.1rem;line-height:1.25;color:var(--deep)}
+.today-focus-card span{display:block;color:var(--muted);font-size:.9rem;line-height:1.35}
 .eyebrow{margin:0 0 5px;color:var(--teal);font-size:.7rem;font-weight:900;text-transform:uppercase;letter-spacing:.12em}
 .hero-card h1,.panel h2,.recipe-detail h3,.cost-card h3{font-family:"Baloo 2",Inter,sans-serif;letter-spacing:-.02em}
 .hero-card h1{margin:0;font-size:clamp(1.75rem,3vw,2.6rem);line-height:1}
@@ -111,10 +118,10 @@ body{
 .detail-cost strong{display:block;font-size:1.35rem}
 .detail-grid{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1fr);gap:20px}
 .detail-grid h4{color:var(--teal);margin:0 0 10px;text-transform:uppercase;letter-spacing:.08em;font-size:.85rem}
-.check-list,.steps-list{margin:0;padding-left:0;display:grid;gap:8px}
-.check-list{list-style:none}
-.check-list label{display:flex;align-items:flex-start;gap:9px;background:#fff8ea;border-radius:12px;padding:9px}
-.check-list input{margin-top:3px}
+.ingredient-list,.steps-list{margin:0;padding-left:0;display:grid;gap:8px}
+.ingredient-list{list-style:none}
+.ingredient-row{display:flex;align-items:center;gap:9px;background:#fff8ea;border-radius:12px;padding:9px 10px;min-height:44px;line-height:1.35}
+.ingredient-row::before{content:"•";color:var(--teal);font-weight:900;line-height:1}
 .steps-list{padding-left:22px}
 .steps-list li{line-height:1.4}
 .cost-card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
@@ -163,6 +170,7 @@ details p span{text-align:right;color:var(--muted)}
   .app-shell{width:min(100% - 18px,1480px);padding-top:0}
   .sidebar{margin:0 -9px;padding:10px;flex-wrap:wrap}
   .brand{width:100%}
+  .today-focus-grid{grid-template-columns:1fr}
   .refresh-btn{padding:8px 10px;font-size:.8rem}
   .hero-card,.panel-head,.recipe-detail-head{flex-direction:column;align-items:stretch}
   .search-input{width:100%}
