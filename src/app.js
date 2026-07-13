@@ -267,24 +267,18 @@ function recipeKeys(recipe) {
 }
 function findCostProduct(recipe) {
   const products = dashboardData.products || [];
-  const rKeys = recipeKeys(recipe);
-  let found = products.find(p => {
-    const pKeys = productKeys(p);
-    return rKeys.some(rk => pKeys.some(pk => pk === rk || (rk.length > 4 && pk.includes(rk)) || (pk.length > 4 && rk.includes(pk))));
-  });
-  if (found) return found;
+  const recipeExact = [recipe.name, ...(recipe.aliases || [])]
+    .filter(Boolean)
+    .map(norm);
 
-  let best = null;
-  let bestScore = 0;
-  products.forEach(p => {
-    [p.name, p.sku].filter(Boolean).forEach(pn => {
-      [recipe.name, ...(recipe.aliases || [])].forEach(rn => {
-        const score = tokenScore(rn, pn);
-        if (score > bestScore) { bestScore = score; best = p; }
-      });
-    });
-  });
-  return bestScore >= 0.42 ? best : null;
+  if (!recipeExact.length) return null;
+
+  return products.find(p => {
+    const productExact = [p.name, p.sku, p.title, p.productName, p.recipeName]
+      .filter(Boolean)
+      .map(norm);
+    return recipeExact.some(key => productExact.includes(key));
+  }) || null;
 }
 function mergedRecipes() {
   const rows = bakedRecipes.map(r => ({ ...r, key: recipeKey(r), costProduct: findCostProduct(r) }));
