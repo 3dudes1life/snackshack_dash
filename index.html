@@ -2042,6 +2042,9 @@ body::after { content: "v93 invoice fix" !important; }
         <div id="healthRing" class="health-ring" aria-label="Operational health score"><strong>—</strong><span>Health</span></div>
       </article>
       <div class="cloud-sync-strip"><div><strong id="cloudSyncBadge" data-status="local">⚪ Local mode</strong><span id="cloudSyncDetail">Cloud connection not configured yet</span></div><button type="button" id="cloudSyncNow" class="ghost-btn">Sync now</button></div>
+      <!-- Kept for JavaScript compatibility; controls remain available in Quick Actions and workspaces. -->
+      <div id="smartActions" class="smart-actions" hidden aria-hidden="true"></div>
+      <div id="cockpitSignals" class="cockpit-signals" hidden aria-hidden="true"></div>
         </div>
 
       </div>
