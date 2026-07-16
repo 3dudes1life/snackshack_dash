@@ -19,3 +19,5 @@ V300 — BUSINESS BRAIN
 - Added Daily Owner Brief, Next Best Action, Risk Radar, Profit Guardian, Smart Prep Forecast.
 - Added Admin & Baseboard control center with workspace visibility, density, Focus Mode, diagnostics, backup/import, and safe device reset.
 - Preserved V200 Cloudflare Worker/D1 sync package and all existing Square/Google connections.
+
+V300.1 UI: Unified Daily Command + Cloud Sync inside Bakery Manager Brain 9.0.

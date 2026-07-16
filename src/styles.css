@@ -2033,3 +2033,62 @@ body.snackos-compact .panel{padding:13px}body.snackos-compact .content{gap:12px}
 .cloud-admin-card .admin-field input{width:100%;box-sizing:border-box;border:1px solid rgba(10,91,105,.2);border-radius:12px;padding:12px 14px;font:inherit;background:#fff;color:#123}
 .cloud-admin-card .admin-button-stack{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
 .cloud-admin-card .security-note{display:block;margin-top:10px;color:#667;line-height:1.45}
+
+
+/* SnackOS V300.1 — Unified Bakery Manager Brain */
+.brain-panel .panel-head{
+  align-items:center;
+}
+.brain-command-suite{
+  margin:16px 0 18px;
+  padding:14px;
+  border:1px solid rgba(10,91,105,.14);
+  border-radius:24px;
+  background:linear-gradient(145deg,rgba(235,247,242,.9),rgba(255,249,235,.92));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.85);
+}
+.software-cockpit-integrated{
+  grid-template-columns:minmax(320px,1.25fr) minmax(260px,.9fr);
+  gap:12px;
+}
+.software-cockpit-integrated .cockpit-main,
+.software-cockpit-integrated .smart-actions,
+.software-cockpit-integrated .cockpit-signals,
+.software-cockpit-integrated .cloud-sync-strip{
+  box-shadow:none;
+  border-color:rgba(10,91,105,.13);
+}
+.software-cockpit-integrated .cockpit-main{
+  background:linear-gradient(135deg,#fffef9,#eaf8f3);
+}
+.software-cockpit-integrated .cloud-sync-strip{
+  background:rgba(255,255,255,.9);
+  align-self:stretch;
+}
+.software-cockpit-integrated #cloudSyncBadge[data-status="synced"]{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  font-weight:900;
+}
+.software-cockpit-integrated .smart-actions{
+  grid-column:1/2;
+}
+.software-cockpit-integrated .cockpit-signals{
+  grid-column:1/-1;
+}
+.brain-panel > .brain-summary{
+  margin-top:2px;
+}
+@media(max-width:900px){
+  .software-cockpit-integrated{grid-template-columns:1fr;}
+  .software-cockpit-integrated .smart-actions,
+  .software-cockpit-integrated .cockpit-signals{grid-column:1;}
+}
+@media(max-width:520px){
+  .brain-command-suite{padding:10px;border-radius:18px;}
+  .software-cockpit-integrated .cockpit-main{flex-direction:column;}
+  .software-cockpit-integrated .health-ring{align-self:center;}
+  .software-cockpit-integrated .smart-actions,
+  .software-cockpit-integrated .cockpit-signals{grid-template-columns:1fr;}
+}

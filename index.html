@@ -8,8 +8,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="./src/styles.css?v=300-cloud-connected">
-<link rel="stylesheet" href="./src/mobile.css?v=300-cloud-connected">
+<link rel="stylesheet" href="./src/styles.css?v=301-unified-brain">
+<link rel="stylesheet" href="./src/mobile.css?v=301-unified-brain">
 
 <style id="emergency-dashboard-css">
 :root{
@@ -1995,20 +1995,6 @@ body::after { content: "v93 invoice fix" !important; }
     </section>
 
 
-    <section class="software-cockpit" aria-label="Bakery command cockpit">
-      <article class="cockpit-main">
-        <div>
-          <p class="eyebrow">SnackOS Daily Command</p>
-          <h2>What needs attention right now?</h2>
-          <p class="muted">One screen for operational health, next actions, and production readiness.</p>
-        </div>
-        <div id="healthRing" class="health-ring" aria-label="Operational health score"><strong>—</strong><span>Health</span></div>
-      </article>
-      <div class="cloud-sync-strip"><div><strong id="cloudSyncBadge" data-status="local">⚪ Local mode</strong><span id="cloudSyncDetail">Cloud connection not configured yet</span></div><button type="button" id="cloudSyncNow" class="ghost-btn">Sync now</button></div>
-      <div id="smartActions" class="smart-actions"></div>
-      <div id="cockpitSignals" class="cockpit-signals"></div>
-    </section>
-
     <section id="businessBrain" class="panel business-brain-panel">
       <div class="panel-head">
         <div><p class="eyebrow">SnackOS V300</p><h2>Business Brain</h2><p class="muted">Caleb's daily owner brief, risk radar, profit guardian, and next-best-action queue.</p></div>
@@ -2039,6 +2025,22 @@ body::after { content: "v93 invoice fix" !important; }
           <p class="muted">Bakery operating brain: today's action list, Square orders + invoices, automatic production demand, Smart Prep, profit math, and pricing strategy.</p>
         </div>
         <button id="brainButton" class="print-btn">Run Brain 9.0</button>
+      </div>
+      <div class="brain-command-suite" aria-label="Bakery command center">
+        <div class="software-cockpit software-cockpit-integrated" aria-label="Bakery command cockpit">
+      <article class="cockpit-main">
+        <div>
+          <p class="eyebrow">SnackOS Daily Command</p>
+          <h2>What needs attention right now?</h2>
+          <p class="muted">One screen for operational health, next actions, and production readiness.</p>
+        </div>
+        <div id="healthRing" class="health-ring" aria-label="Operational health score"><strong>—</strong><span>Health</span></div>
+      </article>
+      <div class="cloud-sync-strip"><div><strong id="cloudSyncBadge" data-status="local">⚪ Local mode</strong><span id="cloudSyncDetail">Cloud connection not configured yet</span></div><button type="button" id="cloudSyncNow" class="ghost-btn">Sync now</button></div>
+      <div id="smartActions" class="smart-actions"></div>
+      <div id="cockpitSignals" class="cockpit-signals"></div>
+        </div>
+
       </div>
       <div id="brainSummary" class="brain-summary"></div>
       <div id="liveSyncPanel" class="live-sync-panel">
@@ -2185,9 +2187,9 @@ body::after { content: "v93 invoice fix" !important; }
   </main>
 </div>
 
-<script src="data/recipe-library.js?v=300-cloud-connected"></script>
-<script src="data/config.js?v=300-cloud-connected"></script>
-<script src="src/app.js?v=300-cloud-connected"></script>
+<script src="data/recipe-library.js?v=301-unified-brain"></script>
+<script src="data/config.js?v=301-unified-brain"></script>
+<script src="src/app.js?v=301-unified-brain"></script>
 <div id="toast" class="software-toast" role="status" aria-live="polite"></div>
 <div id="commandPalette" class="command-overlay" hidden>
   <div class="command-dialog" role="dialog" aria-modal="true" aria-labelledby="commandTitle">

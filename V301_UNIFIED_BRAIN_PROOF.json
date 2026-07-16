@@ -1,0 +1,11 @@
+{
+  "version": "SnackOS V300.1",
+  "change": "Unified Bakery Manager Brain UI",
+  "details": [
+    "Moved What needs attention right now into Bakery Manager Brain 9.0",
+    "Moved Cloud Sync status and Sync now button into the same workspace",
+    "Moved smart actions and operational signals into the same workspace",
+    "Preserved all existing element IDs, Cloudflare sync logic, Square data, and Google Sheets connections",
+    "Added responsive unified layout for desktop, tablet, and mobile"
+  ]
+}
