@@ -1,0 +1,17 @@
+{
+  "version": "300",
+  "name": "Business Brain",
+  "features": [
+    "daily owner brief",
+    "next-best-action queue",
+    "risk radar",
+    "profit guardian",
+    "smart prep forecast",
+    "admin control center",
+    "workspace visibility",
+    "density and focus mode",
+    "backup/import",
+    "diagnostics"
+  ],
+  "cloud_sync": "V200 worker package preserved and ready for deployment"
+}

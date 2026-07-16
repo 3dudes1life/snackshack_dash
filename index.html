@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"/>
-<title>C-Dawg's Snack Shack Command Center</title>
+<title>C-Dawg's SnackOS V300 — Business Brain</title>
 <meta name="theme-color" content="#f7f1df"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="./src/styles.css?v=200-shared-brain">
-<link rel="stylesheet" href="./src/mobile.css?v=200-shared-brain">
+<link rel="stylesheet" href="./src/styles.css?v=300-business-brain">
+<link rel="stylesheet" href="./src/mobile.css?v=300-business-brain">
 
 <style id="emergency-dashboard-css">
 :root{
@@ -1977,8 +1977,9 @@ body::after { content: "v93 invoice fix" !important; }
       <a href="#costs">Production Planner</a>
       <a href="#pricing">Dual Pricing</a>
       <a href="#ingredients">Ingredients</a>
-      <a href="#cleanup">Cleanup</a>
-      <a href="#report">Brain 9.0</a>
+      <a href="#businessBrain">Business Brain</a>
+      <a href="#report">Operations Brain</a>
+      <a href="#admin">Admin</a>
     </nav>
     <button id="refreshButton" class="refresh-btn">Refresh</button>
   </aside>
@@ -1986,9 +1987,9 @@ body::after { content: "v93 invoice fix" !important; }
   <main class="content">
     <section id="top" class="hero-card">
       <div>
-        <p class="eyebrow">C-Dawg's SnackOS</p>
+        <p class="eyebrow">C-Dawg's SnackOS V300</p>
         <h1 id="statusTitle">Loading Caleb's recipes…</h1>
-        <p class="muted" id="statusMessage">Live bakery operations, production intelligence, pricing, and kitchen control.</p>
+        <p class="muted" id="statusMessage">Your bakery manager: what is happening, what is wrong, what to do next, and what it is making.</p>
       </div>
       <div class="hero-actions"><button id="commandButton" class="ghost-btn">⌘ Quick Actions</button><button id="printTodayButton" class="print-btn">Print Recipe</button></div>
     </section>
@@ -2006,6 +2007,20 @@ body::after { content: "v93 invoice fix" !important; }
       <div class="cloud-sync-strip"><div><strong id="cloudSyncBadge" data-status="local">⚪ Local mode</strong><span id="cloudSyncDetail">Cloud connection not configured yet</span></div><button type="button" id="cloudSyncNow" class="ghost-btn">Sync now</button></div>
       <div id="smartActions" class="smart-actions"></div>
       <div id="cockpitSignals" class="cockpit-signals"></div>
+    </section>
+
+    <section id="businessBrain" class="panel business-brain-panel">
+      <div class="panel-head">
+        <div><p class="eyebrow">SnackOS V300</p><h2>Business Brain</h2><p class="muted">Caleb's daily owner brief, risk radar, profit guardian, and next-best-action queue.</p></div>
+        <div class="brain-head-actions"><button id="refreshBusinessBrain" class="ghost-btn" type="button">Refresh advice</button><span id="businessBrainStamp" class="count-pill">Live</span></div>
+      </div>
+      <div id="ownerBrief" class="owner-brief"></div>
+      <div class="business-brain-grid">
+        <article class="brain-workbench"><div class="subhead"><h3>What should I do next?</h3><span>Priority order</span></div><div id="nextActionQueue" class="next-action-queue"></div></article>
+        <article class="brain-workbench"><div class="subhead"><h3>Risk Radar</h3><span>Problems before emergencies</span></div><div id="riskRadar" class="risk-radar"></div></article>
+        <article class="brain-workbench"><div class="subhead"><h3>Profit Guardian</h3><span>Pricing + margin intelligence</span></div><div id="profitGuardian" class="profit-guardian"></div></article>
+        <article class="brain-workbench"><div class="subhead"><h3>Smart Prep Forecast</h3><span>Demand-driven pull list</span></div><div id="prepForecast" class="prep-forecast"></div></article>
+      </div>
     </section>
 
     <section id="activityPanel" class="panel activity-panel">
@@ -2154,12 +2169,25 @@ body::after { content: "v93 invoice fix" !important; }
         <div id="costExtremes" class="list-stack"></div>
       </div>
     </section>
+    <section id="admin" class="panel admin-panel">
+      <div class="panel-head">
+        <div><p class="eyebrow">Control Center</p><h2>Admin & Baseboard</h2><p class="muted">Keep Caleb's daily view clean. Choose which workspaces appear, adjust density, inspect connections, and safely move settings between devices.</p></div>
+        <span class="admin-lock">⚙️ Device settings</span>
+      </div>
+      <div class="admin-grid">
+        <article class="admin-card"><h3>Workspace visibility</h3><p>Hide tools Caleb does not need every day. Nothing is deleted.</p><div id="workspaceToggles" class="workspace-toggles"></div></article>
+        <article class="admin-card"><h3>Interface</h3><label class="admin-field"><span>Dashboard density</span><select id="densitySetting"><option value="comfortable">Comfortable</option><option value="compact">Compact</option></select></label><label class="switch-row"><input id="focusModeSetting" type="checkbox"><span><b>Owner Focus Mode</b><small>Show Business Brain first and reduce operational clutter.</small></span></label><button id="resetLayoutButton" class="ghost-btn" type="button">Restore default layout</button></article>
+        <article class="admin-card"><h3>Data portability</h3><p>Export device settings and operating state before major changes.</p><div class="admin-button-stack"><button id="exportSnackOS" class="ghost-btn" type="button">Export SnackOS backup</button><label class="ghost-btn file-button">Import backup<input id="importSnackOS" type="file" accept="application/json" hidden></label></div></article>
+        <article class="admin-card"><h3>System diagnostics</h3><div id="systemDiagnostics" class="diagnostic-list"></div><button id="runDiagnostics" class="ghost-btn" type="button">Run diagnostics</button></article>
+      </div>
+      <details class="danger-zone"><summary>Advanced device cleanup</summary><div><p>Clears only this browser's SnackOS state. Cloud and Square source data are not deleted.</p><button id="clearDeviceState" class="danger-btn" type="button">Clear this device's saved state</button></div></details>
+    </section>
   </main>
 </div>
 
-<script src="data/recipe-library.js?v=200-shared-brain"></script>
-<script src="data/config.js?v=200-shared-brain"></script>
-<script src="src/app.js?v=200-shared-brain"></script>
+<script src="data/recipe-library.js?v=300-business-brain"></script>
+<script src="data/config.js?v=300-business-brain"></script>
+<script src="src/app.js?v=300-business-brain"></script>
 <div id="toast" class="software-toast" role="status" aria-live="polite"></div>
 <div id="commandPalette" class="command-overlay" hidden>
   <div class="command-dialog" role="dialog" aria-modal="true" aria-labelledby="commandTitle">

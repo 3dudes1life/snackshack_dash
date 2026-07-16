@@ -270,24 +270,18 @@ function recipeKeys(recipe) {
 }
 function findCostProduct(recipe) {
   const products = dashboardData.products || [];
-  const rKeys = recipeKeys(recipe);
-  let found = products.find(p => {
-    const pKeys = productKeys(p);
-    return rKeys.some(rk => pKeys.some(pk => pk === rk || (rk.length > 4 && pk.includes(rk)) || (pk.length > 4 && rk.includes(pk))));
-  });
-  if (found) return found;
+  const recipeExact = [recipe.name, ...(recipe.aliases || [])]
+    .filter(Boolean)
+    .map(norm);
 
-  let best = null;
-  let bestScore = 0;
-  products.forEach(p => {
-    [p.name, p.sku].filter(Boolean).forEach(pn => {
-      [recipe.name, ...(recipe.aliases || [])].forEach(rn => {
-        const score = tokenScore(rn, pn);
-        if (score > bestScore) { bestScore = score; best = p; }
-      });
-    });
-  });
-  return bestScore >= 0.42 ? best : null;
+  if (!recipeExact.length) return null;
+
+  return products.find(p => {
+    const productExact = [p.name, p.sku, p.title, p.productName, p.recipeName]
+      .filter(Boolean)
+      .map(norm);
+    return recipeExact.some(key => productExact.includes(key));
+  }) || null;
 }
 function mergedRecipes() {
   const rows = bakedRecipes.map(r => ({ ...r, key: recipeKey(r), costProduct: findCostProduct(r) }));
@@ -310,7 +304,7 @@ function mergedRecipes() {
 function getProductionBatch(key, fallback = 0) {
   return hasOwn(productionBatchState, key) ? Math.max(0, number(productionBatchState[key])) : Math.max(0, number(fallback) || 0);
 }
-function setProductionBatch(key, value) { productionBatchState[key] = Math.max(0, number(value)); saveState("cdawgProductionBatchState", productionBatchState); }
+function setProductionBatch(key, value) { const next=Math.max(0, number(value)); productionBatchState[key] = next; saveState("cdawgProductionBatchState", productionBatchState); logActivity("🧮","Planner batch changed",`${key}: ${next} batch${next===1?"":"es"}`); }
 function getKitchenBatch(key, fallback = 1) {
   return hasOwn(kitchenBatchState, key) ? Math.max(1, number(kitchenBatchState[key])) : Math.max(1, number(fallback) || 1);
 }
@@ -327,7 +321,7 @@ function savePriceState() { saveState("cdawgDualPriceState", priceState); }
 function savePricingModeState() { saveState("cdawgPricingModeState", pricingModeState); }
 function pricingMode(r) { return pricingModeState[r.key] || "corporate"; }
 function setPricingMode(key, mode) { pricingModeState[key] = mode; savePricingModeState(); }
-function setPriceField(key, field, value) { if (!priceState[key]) priceState[key] = {}; priceState[key][field] = Math.max(0, number(value)); savePriceState(); }
+function setPriceField(key, field, value) { if (!priceState[key]) priceState[key] = {}; const next=Math.max(0, number(value)); priceState[key][field] = next; savePriceState(); logActivity("💵","Price updated",`${key} · ${field}: ${money(next)}`); }
 function getCorporateDzPrice(r) { return number(priceRecord(r).corporateDz) || 0; }
 function getSquareDzPrice(r) { return number(priceRecord(r).squareDz) || 0; }
 function getSquareEachPrice(r) { return number(priceRecord(r).squareEach) || 0; }
@@ -1087,6 +1081,178 @@ function bindControls() {
     control.querySelector("select")?.addEventListener("change", e => { setPricingMode(key, e.target.value); renderAll(); });
   });
 }
+
+
+
+// v200 SnackOS Shared Brain — Cloudflare Worker + D1 ready
+const SnackCloud = (() => {
+  const supportedKeys = new Set([
+    "cdawgProductionBatchState", "cdawgKitchenBatchState", "cdawgDualPriceState",
+    "cdawgPricingModeState", "cdawgSnackOSActivity"
+  ]);
+  let status = "local";
+  let lastCloudSync = null;
+  let timer = null;
+  let applyingRemote = false;
+  const pending = new Map();
+
+  const apiUrl = () => String(window.SNACKSHACK_SYNC_API_URL || "").replace(/\/$/, "");
+  const apiKey = () => String(window.SNACKSHACK_SYNC_API_KEY || "");
+  const configured = () => Boolean(apiUrl() && !apiUrl().includes("PASTE_"));
+
+  function headers(json=true){
+    const h = {};
+    if (json) h["Content-Type"] = "application/json";
+    if (apiKey()) h["X-SnackOS-Key"] = apiKey();
+    return h;
+  }
+  function setStatus(next, detail=""){
+    status=next;
+    const el=document.getElementById("cloudSyncBadge");
+    const detailEl=document.getElementById("cloudSyncDetail");
+    if(el){
+      el.dataset.status=next;
+      el.textContent = next === "synced" ? "🟢 Cloud synced" : next === "saving" ? "🟡 Saving…" : next === "offline" ? "🔴 Offline" : "⚪ Local mode";
+    }
+    if(detailEl) detailEl.textContent = detail || (lastCloudSync ? `Updated ${new Date(lastCloudSync).toLocaleTimeString([], {hour:"numeric",minute:"2-digit",second:"2-digit"})}` : "Cloud connection not configured yet");
+  }
+  function replaceObject(target, source){
+    Object.keys(target).forEach(k=>delete target[k]);
+    if(source && typeof source === "object") Object.assign(target, source);
+  }
+  function applyState(key, value){
+    applyingRemote=true;
+    try{
+      localStorage.setItem(key, JSON.stringify(value || (key===ACTIVITY_KEY?[]:{})));
+      if(key==="cdawgProductionBatchState") replaceObject(productionBatchState,value);
+      else if(key==="cdawgKitchenBatchState") replaceObject(kitchenBatchState,value);
+      else if(key==="cdawgDualPriceState") replaceObject(priceState,value);
+      else if(key==="cdawgPricingModeState") replaceObject(pricingModeState,value);
+    } finally { applyingRemote=false; }
+  }
+  async function request(path, options={}){
+    const res=await fetch(`${apiUrl()}${path}`, {...options, headers:{...headers(options.body!==undefined), ...(options.headers||{})}, cache:"no-store"});
+    if(!res.ok){ const text=await res.text(); throw new Error(text || `Cloud error ${res.status}`); }
+    return res.status===204 ? null : res.json();
+  }
+  async function hydrate(){
+    if(!configured()){ setStatus("local"); return false; }
+    setStatus("saving","Connecting to shared brain…");
+    try{
+      const payload=await request("/v1/state");
+      const states=payload?.states || {};
+      Object.entries(states).forEach(([key,row])=>{ if(supportedKeys.has(key)) applyState(key,row.value); });
+      lastCloudSync=payload?.serverTime || new Date().toISOString();
+      setStatus("synced");
+      return true;
+    }catch(err){ console.warn("SnackCloud hydrate failed",err); setStatus("offline","Using saved device data · cloud retry queued"); return false; }
+  }
+  function queueStateSave(key,value){
+    if(applyingRemote || !supportedKeys.has(key) || !configured()) return;
+    pending.set(key, structuredClone ? structuredClone(value) : JSON.parse(JSON.stringify(value)));
+    setStatus("saving","Saving shared changes…");
+    clearTimeout(queueStateSave.t);
+    queueStateSave.t=setTimeout(flush,350);
+  }
+  async function flush(){
+    if(!configured() || !pending.size) return;
+    const entries=[...pending.entries()]; pending.clear();
+    try{
+      await Promise.all(entries.map(([key,value])=>request(`/v1/state/${encodeURIComponent(key)}`,{method:"PUT",body:JSON.stringify({value,device:window.SNACKSHACK_DEVICE_NAME||"SnackOS browser"})})));
+      lastCloudSync=new Date().toISOString(); setStatus("synced");
+    }catch(err){ entries.forEach(([k,v])=>pending.set(k,v)); setStatus("offline",`${pending.size} change${pending.size===1?"":"s"} waiting to sync`); console.warn("SnackCloud save failed",err); }
+  }
+  async function refresh(){
+    if(!configured() || pending.size) return;
+    const ok=await hydrate();
+    if(ok && typeof renderAll === "function") renderAll();
+  }
+  function start(){
+    setStatus(configured()?"saving":"local");
+    clearInterval(timer); timer=setInterval(refresh,15000);
+    window.addEventListener("online",()=>{flush();refresh();});
+    window.addEventListener("offline",()=>setStatus("offline","No internet · changes stay safely on this device"));
+    document.addEventListener("visibilitychange",()=>{if(!document.hidden)refresh();});
+  }
+  return {configured,hydrate,start,refresh,flush,queueStateSave,setStatus};
+})();
+
+// v100 SnackOS software intelligence layer
+const ACTIVITY_KEY = "cdawgSnackOSActivity";
+function getActivity(){ try{return JSON.parse(localStorage.getItem(ACTIVITY_KEY)||"[]")}catch{return []} }
+function logActivity(icon,title,detail){
+  const rows=getActivity(); rows.unshift({icon,title,detail,time:new Date().toISOString()});
+  saveState(ACTIVITY_KEY,rows.slice(0,30)); renderActivity();
+}
+function showToast(message){ const el=document.getElementById("toast"); if(!el)return; el.textContent=message; el.classList.add("show"); clearTimeout(showToast.t); showToast.t=setTimeout(()=>el.classList.remove("show"),2400); }
+function operationalHealth(){
+  const recipes=mergedRecipes(), unmatched=recipes.filter(r=>!r.costProduct).length;
+  const open=squareOrderSummary().combinedOpen.length, demands=productionDemandBatches();
+  const unmatchedDemand=demands.filter(r=>r.unmatched).length, planned=recipes.filter(r=>selectedBatches(r)>0).length;
+  let score=100; score-=Math.min(25,unmatched*4); score-=Math.min(25,unmatchedDemand*8);
+  if(open>0&&!planned)score-=18; if(!hasBackendData)score-=20;
+  return Math.max(0,Math.round(score));
+}
+function renderCockpit(){
+  const health=operationalHealth(), ring=document.getElementById("healthRing");
+  if(ring){ring.style.setProperty("--health",`${health}%`);ring.querySelector("strong").textContent=health;}
+  const smart=document.getElementById("smartActions");
+  if(smart) smart.innerHTML=[
+    ["⚡","Build today’s plan","Send live demand into Production Planner","apply-demand"],
+    ["🧁","Open Cook Mode","Jump straight to the kitchen workspace","cook"],
+    ["💵","Review pricing","Compare corporate and Square margins","pricing"],
+    ["🛒","Prep shopping list","See ingredients for selected batches","shoppingList"]
+  ].map(([i,t,d,a])=>`<button class="smart-action" data-smart="${a}"><b>${i} ${t}</b><span>${d}</span></button>`).join("");
+  smart?.querySelectorAll("[data-smart]").forEach(btn=>btn.addEventListener("click",()=>runSmartAction(btn.dataset.smart)));
+  const recipes=mergedRecipes(), planned=recipes.filter(r=>selectedBatches(r)>0), unmatched=recipes.filter(r=>!r.costProduct).length;
+  const open=squareOrderSummary().combinedOpen.length, demand=productionDemandBatches().filter(r=>!r.unmatched).reduce((s,r)=>s+r.batches,0);
+  const signals=document.getElementById("cockpitSignals");
+  if(signals) signals.innerHTML=`
+    <article class="signal-card ${open?'warn':'good'}"><span>Open work</span><strong>${open}</strong><small>orders + invoices</small></article>
+    <article class="signal-card ${demand?'warn':'good'}"><span>Demand batches</span><strong>${demand}</strong><small>from live orders</small></article>
+    <article class="signal-card ${planned.length?'good':'warn'}"><span>Planner recipes</span><strong>${planned.length}</strong><small>currently selected</small></article>
+    <article class="signal-card ${unmatched?'bad':'good'}"><span>Data cleanup</span><strong>${unmatched}</strong><small>recipe links needed</small></article>`;
+}
+function runSmartAction(action){
+  if(action==="apply-demand"){ applyDemandToProductionPlanner(); logActivity("⚡","Production plan updated","Live order demand sent to planner"); showToast("Production demand sent to planner"); return; }
+  const el=document.getElementById(action); el?.scrollIntoView({behavior:"smooth",block:"start"}); showToast("Opening workspace");
+}
+function renderActivity(){
+  const feed=document.getElementById("activityFeed"), rows=getActivity(); if(!feed)return;
+  feed.innerHTML=rows.length?rows.slice(0,8).map(r=>`<article class="activity-item"><div class="activity-icon">${r.icon}</div><div><b>${r.title}</b><span>${r.detail}</span></div><time>${new Date(r.time).toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}</time></article>`).join(""):`<div class="empty-state">Actions taken in SnackOS will appear here.</div>`;
+}
+function commandItems(){
+  const base=[
+    ["Dashboard","Top operational view","top"],["Order Hub","Square orders and production demand","orders"],["Cook Mode","Scaled kitchen recipes","cook"],["Production Planner","Batch, cost, and profit planning","costs"],["Dual Pricing","Corporate and Square pricing","pricing"],["Ingredients","Master ingredient costs","ingredients"],["Cleanup Queue","Missing links and data issues","cleanup"],["Snack IQ Brain","Recommendations and Smart Prep","report"]
+  ];
+  return base.concat(mergedRecipes().map(r=>[r.name,"Open recipe in Cook Mode",`recipe:${r.key}`]));
+}
+function renderCommands(filter=""){
+  const box=document.getElementById("commandResults"), q=filter.toLowerCase(); if(!box)return;
+  const rows=commandItems().filter(x=>`${x[0]} ${x[1]}`.toLowerCase().includes(q)).slice(0,24);
+  box.innerHTML=rows.map(([t,d,a])=>`<button class="command-result" data-command="${a}"><b>${t}</b><span>${d}</span></button>`).join("")||`<div class="empty-state">No matching action.</div>`;
+  box.querySelectorAll("[data-command]").forEach(btn=>btn.addEventListener("click",()=>executeCommand(btn.dataset.command)));
+}
+function executeCommand(action){
+  closeCommands();
+  if(action.startsWith("recipe:")){selectedRecipeKey=action.split(":")[1];renderRecipeList();renderRecipeDetail();document.getElementById("cook")?.scrollIntoView({behavior:"smooth"});showToast("Recipe opened");return;}
+  document.getElementById(action)?.scrollIntoView({behavior:"smooth",block:"start"});
+}
+function openCommands(){const o=document.getElementById("commandPalette");if(!o)return;o.hidden=false;renderCommands();setTimeout(()=>document.getElementById("commandSearch")?.focus(),20)}
+function closeCommands(){const o=document.getElementById("commandPalette");if(o)o.hidden=true}
+function initSnackOS(){
+  document.getElementById("commandButton")?.addEventListener("click",openCommands);
+  document.getElementById("closeCommand")?.addEventListener("click",closeCommands);
+  document.getElementById("commandPalette")?.addEventListener("click",e=>{if(e.target.id==="commandPalette")closeCommands()});
+  document.getElementById("commandSearch")?.addEventListener("input",e=>renderCommands(e.target.value));
+  document.getElementById("clearActivity")?.addEventListener("click",()=>{saveState(ACTIVITY_KEY,[]);renderActivity();showToast("Activity cleared")});
+  document.getElementById("cloudSyncNow")?.addEventListener("click",async()=>{await SnackCloud.flush();await SnackCloud.refresh();showToast(SnackCloud.configured()?"Cloud sync checked":"Add Worker URL in data/config.js to connect")});
+  document.addEventListener("keydown",e=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==="k"){e.preventDefault();openCommands()}if(e.key==="Escape")closeCommands()});
+  renderActivity(); renderCockpit();
+  initBusinessBrain();
+  initAdmin();
+}
+
 function renderAll() {
   renderTodayFocus();
   renderOverview();
@@ -1098,6 +1264,10 @@ function renderAll() {
   renderCleanup();
   renderBrain();
   renderOrderHub();
+  renderCockpit();
+  renderActivity();
+  renderBusinessBrain();
+  renderAdmin();
   bindControls();
   syncPanel(lastSyncAt ? "LIVE" : "Loading…", lastSyncAt ? "Fresh Square + Google Sheets data loaded" : "Pulling fresh bakery data");
 }
@@ -1114,6 +1284,8 @@ async function init() {
   document.getElementById("printTodayButton")?.addEventListener("click", () => window.print());
   document.getElementById("brainButton")?.addEventListener("click", () => { renderBrain(); renderOrderHub(); });
   startAutoRefresh();
+  initSnackOS();
+  if (!getActivity().length) logActivity("✨","SnackOS ready","Smart bakery command center initialized");
 }
 init();
 window.addEventListener("focus", liveRefresh);
@@ -1151,3 +1323,31 @@ setTimeout(cdawgUpdateMobileHeaderHeight, 1500);
 setTimeout(cdawgUpdateMobileHeaderHeight, 250);
 setTimeout(cdawgUpdateMobileHeaderHeight, 1000);
 setTimeout(cdawgUpdateMobileHeaderHeight, 2500);
+
+
+// SnackOS V300 — Business Brain + Admin Control Center
+const V300_PREFS_KEY="cdawgSnackOSV300Prefs";
+const V300_SECTIONS=[
+  ["orders","Order Hub","Square work and demand"],["cook","Cook Mode","Kitchen recipe workspace"],["costs","Production Planner","Batch and profit planning"],["pricing","Dual Pricing","Corporate and retail pricing"],["ingredients","Ingredients","Master cost list"],["cleanup","Cleanup","Data quality tools"],["report","Operations Brain","Detailed operational analysis"],["activityPanel","Activity","Recent system actions"]
+];
+function v300Prefs(){try{return {...{density:"comfortable",focus:false,hidden:[]},...JSON.parse(localStorage.getItem(V300_PREFS_KEY)||"{}")}}catch{return {density:"comfortable",focus:false,hidden:[]}}}
+function saveV300Prefs(next){saveState(V300_PREFS_KEY,next);applyV300Prefs()}
+function applyV300Prefs(){const p=v300Prefs();document.body.classList.toggle("snackos-compact",p.density==="compact");document.body.classList.toggle("owner-focus",!!p.focus);V300_SECTIONS.forEach(([id])=>document.getElementById(id)?.classList.toggle("workspace-hidden",(p.hidden||[]).includes(id)));}
+function dueSoonCount(){const now=Date.now(),limit=now+48*3600*1000;return combinedOpenSquareDocuments().filter(doc=>{const raw=doc.docType==="Invoice"?invoiceDate(doc):orderDate(doc);const t=new Date(raw||0).getTime();return t&&t<=limit;}).length}
+function businessSnapshot(){
+ const summary=squareOrderSummary(), demand=productionDemandBatches(), matched=demand.filter(r=>!r.unmatched&&r.batches>0), unmatched=demand.filter(r=>r.unmatched), ingredients=buildDemandIngredientTotals();
+ const revenue=openSquareValue(), cost=demandProductionCost(), profit=revenue-cost, margin=marginFromProfit(profit,revenue), planned=mergedRecipes().filter(r=>selectedBatches(r)>0), cleanup=mergedRecipes().filter(r=>!r.costProduct||singleBatchCost(r.costProduct)<=0);
+ return {summary,demand,matched,unmatched,ingredients,revenue,cost,profit,margin,planned,cleanup,dueSoon:dueSoonCount()};
+}
+function ownerMessage(s){if(!s.summary.combinedOpen.length)return "The kitchen is clear. Use the quiet time to verify costs, prep inventory, or promote the highest-margin cookie.";if(s.unmatched.length)return `${s.unmatched.length} Square item${s.unmatched.length===1?"":"s"} cannot become a production plan yet. Match those names before baking.`;if(!s.planned.length)return `${s.summary.combinedOpen.length} open job${s.summary.combinedOpen.length===1?"":"s"} are waiting. Build today’s plan so production is not living in Caleb’s head.`;return `${s.planned.length} recipe${s.planned.length===1?"":"s"} are planned for production. Work the queue in order and protect the estimated ${percent(s.margin)} margin.`}
+function nextActions(s){const a=[];if(s.unmatched.length)a.push({t:"Match Square product names",d:`${s.unmatched.map(x=>x.name).slice(0,3).join(", ")}`,go:"orders",tone:"bad"});if(s.summary.combinedOpen.length&&!s.planned.length)a.push({t:"Build today’s production plan",d:`Convert ${s.summary.combinedOpen.length} open job${s.summary.combinedOpen.length===1?"":"s"} into batches`,action:"apply",tone:"warn"});if(s.dueSoon)a.push({t:"Review due-soon work",d:`${s.dueSoon} order${s.dueSoon===1?"":"s"} may need attention within 48 hours`,go:"orders",tone:"warn"});if(s.planned.length)a.push({t:"Start Cook Mode",d:`Begin with ${s.planned[0].name}`,go:"cook",tone:"good"});if(s.cleanup.length)a.push({t:"Fix cost data",d:`${s.cleanup.length} recipe${s.cleanup.length===1?"":"s"} need a usable cost link`,go:"cleanup",tone:"warn"});if(!a.length)a.push({t:"Review pricing health",d:"No urgent production risks detected",go:"pricing",tone:"good"});return a.slice(0,5)}
+function risks(s){const r=[];if(s.unmatched.length)r.push({t:"Unmatched demand",d:`${s.unmatched.length} item group${s.unmatched.length===1?"":"s"} cannot be batched`,tone:"bad"});if(s.margin>0&&s.margin<45)r.push({t:"Margin below target",d:`Current open-work estimate is ${percent(s.margin)}`,tone:"bad"});if(s.summary.combinedOpen.length&&!s.planned.length)r.push({t:"Orders not planned",d:"Open work exists but Production Planner is empty",tone:"warn"});if(s.cleanup.length)r.push({t:"Incomplete costing",d:`${s.cleanup.length} recipe link${s.cleanup.length===1?"":"s"} need cleanup`,tone:"warn"});if(!r.length)r.push({t:"No major risks detected",d:"Current order, plan, and costing signals look healthy",tone:"good"});return r}
+function profitAdvice(s){const rows=[];if(s.revenue>0)rows.push({t:`${money(s.profit)} estimated open-work profit`,d:`${percent(s.margin)} margin on ${money(s.revenue)} value`,tone:s.margin>=55?"good":s.margin>=40?"warn":"bad"});const candidates=mergedRecipes().filter(r=>r.costProduct).map(r=>({r,m:marginForMode(r,pricingModeFor(r))})).filter(x=>isFinite(x.m)).sort((a,b)=>a.m-b.m);if(candidates[0])rows.push({t:`Watch ${candidates[0].r.name}`,d:`Lowest modeled active margin at ${percent(candidates[0].m)}`,tone:candidates[0].m<45?"warn":"good"});if(candidates.at(-1))rows.push({t:`Promote ${candidates.at(-1).r.name}`,d:`Strongest modeled active margin at ${percent(candidates.at(-1).m)}`,tone:"good"});return rows}
+function renderBrainRows(target,rows,actions=false){const el=document.getElementById(target);if(!el)return;el.innerHTML=rows.map((x,i)=>`<div class="brain-row ${x.tone||""}">${actions?`<span class="rank">${i+1}</span>`:`<span class="rank">${x.tone==="bad"?"!":x.tone==="warn"?"⚠":"✓"}</span>`}<div><b>${x.t}</b><span>${x.d}</span></div>${actions?`<button type="button" data-v300-go="${x.action||x.go||"top"}">Open</button>`:""}</div>`).join("")}
+function renderBusinessBrain(){const s=businessSnapshot(), brief=document.getElementById("ownerBrief");if(!brief)return;brief.innerHTML=`<article class="owner-greeting"><p class="eyebrow" style="color:#dff7ef">Daily Owner Brief</p><h3>${s.summary.combinedOpen.length?"Caleb, here is today’s bakery game plan.":"Caleb, the board is clear."}</h3><p>${ownerMessage(s)}</p></article><article class="owner-stat"><span>Open work</span><strong>${s.summary.combinedOpen.length}</strong><small>${money(s.revenue)} value</small></article><article class="owner-stat"><span>Batches needed</span><strong>${s.matched.reduce((n,x)=>n+x.batches,0)}</strong><small>${s.matched.length} matched products</small></article><article class="owner-stat"><span>Est. profit</span><strong>${money(s.profit)}</strong><small>${percent(s.margin)} margin</small></article>`;renderBrainRows("nextActionQueue",nextActions(s),true);renderBrainRows("riskRadar",risks(s));renderBrainRows("profitGuardian",profitAdvice(s));const prep=s.ingredients.slice(0,6).map(x=>({t:`${x.amount.toFixed(1).replace(/\.0$/,"")} ${x.unit} ${x.name}`,d:`Estimated demand cost ${money(x.cost)}`,tone:"good"}));renderBrainRows("prepForecast",prep.length?prep:[{t:"No ingredient pull needed",d:"Build or import a production plan to calculate prep",tone:"good"}]);document.getElementById("businessBrainStamp").textContent=new Date().toLocaleTimeString([], {hour:"numeric",minute:"2-digit"});document.querySelectorAll("[data-v300-go]").forEach(b=>b.onclick=()=>{if(b.dataset.v300Go==="apply"){applyDemandToProductionPlanner();logActivity("🧠","Business Brain built the plan","Open Square demand converted into production batches");showToast("Today’s plan is ready");}else document.getElementById(b.dataset.v300Go)?.scrollIntoView({behavior:"smooth"})})}
+function renderAdmin(){const p=v300Prefs(),wrap=document.getElementById("workspaceToggles");if(!wrap)return;wrap.innerHTML=V300_SECTIONS.map(([id,label,desc])=>`<label class="switch-row"><input type="checkbox" data-workspace="${id}" ${(p.hidden||[]).includes(id)?"":"checked"}><span><b>${label}</b><small>${desc}</small></span></label>`).join("");document.getElementById("densitySetting").value=p.density;document.getElementById("focusModeSetting").checked=!!p.focus;applyV300Prefs();renderDiagnostics()}
+function renderDiagnostics(){const el=document.getElementById("systemDiagnostics");if(!el)return;const tests=[["Cloud configuration",SnackCloud.configured(),SnackCloud.configured()?"Configured":"Local mode"],["Square source",!!hasBackendData,hasBackendData?"Live data loaded":"Fallback data"],["Recipe library",mergedRecipes().length>0,`${mergedRecipes().length} recipes`],["Browser storage",true,`${Math.round(JSON.stringify(localStorage).length/1024)} KB approx.`]];el.innerHTML=tests.map(([n,ok,d])=>`<div class="diagnostic-item"><span>${n}<small> · ${d}</small></span><b class="${ok?"good":"warn"}">${ok?"Ready":"Check"}</b></div>`).join("")}
+function exportSnackOS(){const keys=["cdawgProductionBatchState","cdawgKitchenBatchState","cdawgDualPriceState","cdawgPricingModeState",ACTIVITY_KEY,V300_PREFS_KEY],data={app:"SnackOS",version:300,exportedAt:new Date().toISOString(),state:{}};keys.forEach(k=>{try{data.state[k]=JSON.parse(localStorage.getItem(k)||"null")}catch{data.state[k]=localStorage.getItem(k)}});const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`snackos-backup-${new Date().toISOString().slice(0,10)}.json`;a.click();URL.revokeObjectURL(a.href);showToast("SnackOS backup exported")}
+async function importSnackOSFile(file){const data=JSON.parse(await file.text());if(data?.app!=="SnackOS"||!data.state)throw new Error("Not a SnackOS backup");Object.entries(data.state).forEach(([k,v])=>localStorage.setItem(k,JSON.stringify(v)));showToast("Backup imported — reloading");setTimeout(()=>location.reload(),700)}
+function initBusinessBrain(){document.getElementById("refreshBusinessBrain")?.addEventListener("click",()=>{renderBusinessBrain();showToast("Business advice refreshed")})}
+function initAdmin(){document.getElementById("workspaceToggles")?.addEventListener("change",e=>{if(!e.target.dataset.workspace)return;const p=v300Prefs(),set=new Set(p.hidden||[]);e.target.checked?set.delete(e.target.dataset.workspace):set.add(e.target.dataset.workspace);saveV300Prefs({...p,hidden:[...set]});showToast("Workspace layout updated")});document.getElementById("densitySetting")?.addEventListener("change",e=>saveV300Prefs({...v300Prefs(),density:e.target.value}));document.getElementById("focusModeSetting")?.addEventListener("change",e=>saveV300Prefs({...v300Prefs(),focus:e.target.checked}));document.getElementById("resetLayoutButton")?.addEventListener("click",()=>{saveV300Prefs({density:"comfortable",focus:false,hidden:[]});renderAdmin();showToast("Default layout restored")});document.getElementById("exportSnackOS")?.addEventListener("click",exportSnackOS);document.getElementById("importSnackOS")?.addEventListener("change",async e=>{try{if(e.target.files[0])await importSnackOSFile(e.target.files[0])}catch(err){showToast(err.message)}});document.getElementById("runDiagnostics")?.addEventListener("click",()=>{renderDiagnostics();showToast("Diagnostics complete")});document.getElementById("clearDeviceState")?.addEventListener("click",()=>{if(!confirm("Clear SnackOS state saved only on this device?"))return;["cdawgProductionBatchState","cdawgKitchenBatchState","cdawgDualPriceState","cdawgPricingModeState",ACTIVITY_KEY,V300_PREFS_KEY].forEach(k=>localStorage.removeItem(k));location.reload()});applyV300Prefs()}

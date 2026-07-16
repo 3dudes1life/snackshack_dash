@@ -13,3 +13,9 @@ V100 — SnackOS Software Layer
 - Added searchable command palette (Command/Ctrl + K) for navigation and instant recipe opening.
 - Upgraded Snack IQ presentation from Brain 8.0 to Brain 9.0.
 - Preserved existing Square, Google Sheets, Apps Script, and communication connections.
+
+
+V300 — BUSINESS BRAIN
+- Added Daily Owner Brief, Next Best Action, Risk Radar, Profit Guardian, Smart Prep Forecast.
+- Added Admin & Baseboard control center with workspace visibility, density, Focus Mode, diagnostics, backup/import, and safe device reset.
+- Preserved V200 Cloudflare Worker/D1 sync package and all existing Square/Google connections.
