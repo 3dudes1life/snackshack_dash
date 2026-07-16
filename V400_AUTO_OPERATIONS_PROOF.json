@@ -1,0 +1,11 @@
+{
+  "version": "SnackOS V400",
+  "squareGoogleLiveRefresh": true,
+  "refreshSeconds": 30,
+  "autoProductionPlan": true,
+  "inventoryForecast": true,
+  "smartShopping": true,
+  "profitGuardian": true,
+  "dailyOwnerBrief": true,
+  "cloudflareSyncPreserved": true
+}

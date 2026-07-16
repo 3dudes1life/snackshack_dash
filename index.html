@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"/>
-<title>C-Dawg's SnackOS V300 — Business Brain</title>
+<title>C-Dawg's SnackOS V400 — Business Brain</title>
 <meta name="theme-color" content="#f7f1df"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="./src/styles.css?v=301-unified-brain">
-<link rel="stylesheet" href="./src/mobile.css?v=301-unified-brain">
+<link rel="stylesheet" href="./src/styles.css?v=400-auto-operations">
+<link rel="stylesheet" href="./src/mobile.css?v=400-auto-operations">
 
 <style id="emergency-dashboard-css">
 :root{
@@ -1987,7 +1987,7 @@ body::after { content: "v93 invoice fix" !important; }
   <main class="content">
     <section id="top" class="hero-card">
       <div>
-        <p class="eyebrow">C-Dawg's SnackOS V300</p>
+        <p class="eyebrow">C-Dawg's SnackOS V400</p>
         <h1 id="statusTitle">Loading Caleb's recipes…</h1>
         <p class="muted" id="statusMessage">Your bakery manager: what is happening, what is wrong, what to do next, and what it is making.</p>
       </div>
@@ -1997,10 +1997,15 @@ body::after { content: "v93 invoice fix" !important; }
 
     <section id="businessBrain" class="panel business-brain-panel">
       <div class="panel-head">
-        <div><p class="eyebrow">SnackOS V300</p><h2>Business Brain</h2><p class="muted">Caleb's daily owner brief, risk radar, profit guardian, and next-best-action queue.</p></div>
+        <div><p class="eyebrow">SnackOS V400</p><h2>Business Brain</h2><p class="muted">Caleb's daily owner brief, risk radar, profit guardian, and next-best-action queue.</p></div>
         <div class="brain-head-actions"><button id="refreshBusinessBrain" class="ghost-btn" type="button">Refresh advice</button><span id="businessBrainStamp" class="count-pill">Live</span></div>
       </div>
       <div id="ownerBrief" class="owner-brief"></div>
+      <section class="auto-operations-suite" aria-label="SnackOS Auto Operations">
+        <div class="subhead"><div><p class="eyebrow">SnackOS V400</p><h3>Auto Operations</h3></div><span>Square → plan → ingredients → shopping → profit</span></div>
+        <div id="autoOperationsGrid" class="auto-operations-grid"></div>
+        <div class="smart-shopping-box"><div class="subhead"><h3>Smart Shopping Shortages</h3><span>Compared with Google Sheets stock</span></div><div id="smartShoppingV400"></div></div>
+      </section>
       <div class="business-brain-grid">
         <article class="brain-workbench"><div class="subhead"><h3>What should I do next?</h3><span>Priority order</span></div><div id="nextActionQueue" class="next-action-queue"></div></article>
         <article class="brain-workbench"><div class="subhead"><h3>Risk Radar</h3><span>Problems before emergencies</span></div><div id="riskRadar" class="risk-radar"></div></article>
@@ -2187,9 +2192,9 @@ body::after { content: "v93 invoice fix" !important; }
   </main>
 </div>
 
-<script src="data/recipe-library.js?v=301-unified-brain"></script>
-<script src="data/config.js?v=301-unified-brain"></script>
-<script src="src/app.js?v=301-unified-brain"></script>
+<script src="data/recipe-library.js?v=400-auto-operations"></script>
+<script src="data/config.js?v=400-auto-operations"></script>
+<script src="src/app.js?v=400-auto-operations"></script>
 <div id="toast" class="software-toast" role="status" aria-live="polite"></div>
 <div id="commandPalette" class="command-overlay" hidden>
   <div class="command-dialog" role="dialog" aria-modal="true" aria-labelledby="commandTitle">

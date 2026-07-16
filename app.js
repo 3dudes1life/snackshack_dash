@@ -88,8 +88,10 @@ let selectedRecipeKey = "";
 let lastSyncAt = null;
 let syncTimer = null;
 let countdownTimer = null;
-let nextSync = 60;
+let nextSync = 30;
 let hasBackendData = false;
+let liveRefreshInFlight = null;
+let lastBackendError = "";
 
 const productionBatchState = loadState("cdawgProductionBatchState", "cdawgBatchState");
 const kitchenBatchState = loadState("cdawgKitchenBatchState");
@@ -231,7 +233,7 @@ function syncPanel(status, detail) {
 }
 function startCountdown() {
   clearInterval(countdownTimer);
-  nextSync = 60;
+  nextSync = 30;
   syncPanel("LIVE", "Fresh Square + Google Sheets data loaded");
   countdownTimer = setInterval(() => {
     nextSync = Math.max(0, nextSync - 1);
@@ -239,23 +241,35 @@ function startCountdown() {
     if (n) n.textContent = `${nextSync}s`;
   }, 1000);
 }
-async function liveRefresh() {
-  try {
-    syncPanel("Syncing…", "Pulling fresh Square + Google Sheets data");
-    await loadBackendData();
-    lastSyncAt = new Date();
-    renderStatus(true);
-    renderAll();
-    startCountdown();
-  } catch (err) {
-    hasBackendData = false;
-    console.error(err);
-    syncPanel("Offline", String(err && err.message ? err.message : err));
-  }
+async function liveRefresh(reason="automatic") {
+  if (liveRefreshInFlight) return liveRefreshInFlight;
+  liveRefreshInFlight = (async () => {
+    try {
+      syncPanel("Syncing…", `Pulling fresh Square + Google Sheets data · ${reason}`);
+      await loadBackendData();
+      lastSyncAt = new Date();
+      lastBackendError = "";
+      renderStatus(true);
+      renderAll();
+      maybeRunAutoOperations();
+      startCountdown();
+      return true;
+    } catch (err) {
+      hasBackendData = false;
+      lastBackendError = String(err && err.message ? err.message : err);
+      console.error(err);
+      syncPanel("Offline", lastBackendError);
+      renderDiagnostics?.();
+      return false;
+    } finally {
+      liveRefreshInFlight = null;
+    }
+  })();
+  return liveRefreshInFlight;
 }
 function startAutoRefresh() {
   clearInterval(syncTimer);
-  syncTimer = setInterval(liveRefresh, 60000);
+  syncTimer = setInterval(() => liveRefresh("30-second background refresh"), 30000);
   startCountdown();
 }
 
@@ -1088,7 +1102,7 @@ function bindControls() {
 const SnackCloud = (() => {
   const supportedKeys = new Set([
     "cdawgProductionBatchState", "cdawgKitchenBatchState", "cdawgDualPriceState",
-    "cdawgPricingModeState", "cdawgSnackOSActivity", "cdawgSnackOSV300Prefs"
+    "cdawgPricingModeState", "cdawgSnackOSActivity", "cdawgSnackOSV300Prefs", "cdawgSnackOSV400Prefs"
   ]);
   let status = "local";
   let lastCloudSync = null;
@@ -1267,6 +1281,7 @@ function renderAll() {
   renderCockpit();
   renderActivity();
   renderBusinessBrain();
+  renderAutoOperations();
   renderAdmin();
   bindControls();
   syncPanel(lastSyncAt ? "LIVE" : "Loading…", lastSyncAt ? "Fresh Square + Google Sheets data loaded" : "Pulling fresh bakery data");
@@ -1280,7 +1295,7 @@ async function init() {
   renderAll();
   startCountdown();
   document.getElementById("recipeSearch")?.addEventListener("input", e => renderRecipeList(e.target.value));
-  document.getElementById("refreshButton")?.addEventListener("click", liveRefresh);
+  document.getElementById("refreshButton")?.addEventListener("click", () => liveRefresh("manual refresh"));
   document.getElementById("printTodayButton")?.addEventListener("click", () => window.print());
   document.getElementById("brainButton")?.addEventListener("click", () => { renderBrain(); renderOrderHub(); });
   startAutoRefresh();
@@ -1288,7 +1303,10 @@ async function init() {
   if (!getActivity().length) logActivity("✨","SnackOS ready","Smart bakery command center initialized");
 }
 init();
-window.addEventListener("focus", liveRefresh);
+window.addEventListener("focus", () => liveRefresh("window focus"));
+document.addEventListener("visibilitychange", () => { if (!document.hidden) liveRefresh("tab visible"); });
+window.addEventListener("online", () => liveRefresh("connection restored"));
+window.addEventListener("pageshow", e => { if (e.persisted) liveRefresh("page restored"); });
 
 
 /* v90 mobile marker */
@@ -1325,7 +1343,7 @@ setTimeout(cdawgUpdateMobileHeaderHeight, 1000);
 setTimeout(cdawgUpdateMobileHeaderHeight, 2500);
 
 
-// SnackOS V300 — Business Brain + Admin Control Center
+// SnackOS V400 — Business Brain + Admin Control Center
 const V300_PREFS_KEY="cdawgSnackOSV300Prefs";
 const V300_SECTIONS=[
   ["orders","Order Hub","Square work and demand"],["cook","Cook Mode","Kitchen recipe workspace"],["costs","Production Planner","Batch and profit planning"],["pricing","Dual Pricing","Corporate and retail pricing"],["ingredients","Ingredients","Master cost list"],["cleanup","Cleanup","Data quality tools"],["report","Operations Brain","Detailed operational analysis"],["activityPanel","Activity","Recent system actions"]
@@ -1362,8 +1380,30 @@ async function testSyncConnection(){
   SnackCloud.setStatus("saving","Testing shared brain…");
   const ok=await SnackCloud.hydrate(); renderDiagnostics(); showToast(ok?"Cloud sync is working":"Cloud sync needs attention");
 }
-function renderDiagnostics(){const el=document.getElementById("systemDiagnostics");if(!el)return;const tests=[["Cloud endpoint",SnackCloud.configured(),SnackCloud.configured()?"Worker connected":"Local mode"],["Saved device password",!!savedSyncPassword(),savedSyncPassword()?"Remembered on this device":"Not stored (only needed if Worker is protected)"],["Square source",!!hasBackendData,hasBackendData?"Live data loaded":"Fallback data"],["Recipe library",mergedRecipes().length>0,`${mergedRecipes().length} recipes`],["Browser storage",true,`${Math.round(JSON.stringify(localStorage).length/1024)} KB approx.`]];el.innerHTML=tests.map(([n,ok,d])=>`<div class="diagnostic-item"><span>${n}<small> · ${d}</small></span><b class="${ok?"good":"warn"}">${ok?"Ready":"Check"}</b></div>`).join("")}
-function exportSnackOS(){const keys=["cdawgProductionBatchState","cdawgKitchenBatchState","cdawgDualPriceState","cdawgPricingModeState",ACTIVITY_KEY,V300_PREFS_KEY],data={app:"SnackOS",version:300,exportedAt:new Date().toISOString(),state:{}};keys.forEach(k=>{try{data.state[k]=JSON.parse(localStorage.getItem(k)||"null")}catch{data.state[k]=localStorage.getItem(k)}});const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`snackos-backup-${new Date().toISOString().slice(0,10)}.json`;a.click();URL.revokeObjectURL(a.href);showToast("SnackOS backup exported")}
+function renderDiagnostics(){const el=document.getElementById("systemDiagnostics");if(!el)return;const tests=[["Cloud endpoint",SnackCloud.configured(),SnackCloud.configured()?"Worker connected":"Local mode"],["Saved device password",!!savedSyncPassword(),savedSyncPassword()?"Remembered on this device":"Not stored (only needed if Worker is protected)"],["Square + Google Sheets",!!hasBackendData,hasBackendData?`Live · ${lastSyncAt?lastSyncAt.toLocaleTimeString():"loaded"}`:`Offline · ${lastBackendError||"no live data"}`],["Recipe library",mergedRecipes().length>0,`${mergedRecipes().length} recipes`],["Browser storage",true,`${Math.round(JSON.stringify(localStorage).length/1024)} KB approx.`]];el.innerHTML=tests.map(([n,ok,d])=>`<div class="diagnostic-item"><span>${n}<small> · ${d}</small></span><b class="${ok?"good":"warn"}">${ok?"Ready":"Check"}</b></div>`).join("")}
+function exportSnackOS(){const keys=["cdawgProductionBatchState","cdawgKitchenBatchState","cdawgDualPriceState","cdawgPricingModeState",ACTIVITY_KEY,V300_PREFS_KEY,V400_PREFS_KEY],data={app:"SnackOS",version:400,exportedAt:new Date().toISOString(),state:{}};keys.forEach(k=>{try{data.state[k]=JSON.parse(localStorage.getItem(k)||"null")}catch{data.state[k]=localStorage.getItem(k)}});const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`snackos-backup-${new Date().toISOString().slice(0,10)}.json`;a.click();URL.revokeObjectURL(a.href);showToast("SnackOS backup exported")}
 async function importSnackOSFile(file){const data=JSON.parse(await file.text());if(data?.app!=="SnackOS"||!data.state)throw new Error("Not a SnackOS backup");Object.entries(data.state).forEach(([k,v])=>localStorage.setItem(k,JSON.stringify(v)));showToast("Backup imported — reloading");setTimeout(()=>location.reload(),700)}
-function initBusinessBrain(){document.getElementById("refreshBusinessBrain")?.addEventListener("click",()=>{renderBusinessBrain();showToast("Business advice refreshed")})}
-function initAdmin(){document.getElementById("workspaceToggles")?.addEventListener("change",e=>{if(!e.target.dataset.workspace)return;const p=v300Prefs(),set=new Set(p.hidden||[]);e.target.checked?set.delete(e.target.dataset.workspace):set.add(e.target.dataset.workspace);saveV300Prefs({...p,hidden:[...set]});showToast("Workspace layout updated")});document.getElementById("densitySetting")?.addEventListener("change",e=>saveV300Prefs({...v300Prefs(),density:e.target.value}));document.getElementById("focusModeSetting")?.addEventListener("change",e=>saveV300Prefs({...v300Prefs(),focus:e.target.checked}));document.getElementById("resetLayoutButton")?.addEventListener("click",()=>{saveV300Prefs({density:"comfortable",focus:false,hidden:[]});renderAdmin();showToast("Default layout restored")});document.getElementById("exportSnackOS")?.addEventListener("click",exportSnackOS);document.getElementById("importSnackOS")?.addEventListener("change",async e=>{try{if(e.target.files[0])await importSnackOSFile(e.target.files[0])}catch(err){showToast(err.message)}});document.getElementById("runDiagnostics")?.addEventListener("click",()=>{renderDiagnostics();showToast("Diagnostics complete")});document.getElementById("saveSyncConnection")?.addEventListener("click",saveSyncConnection);document.getElementById("testSyncConnection")?.addEventListener("click",testSyncConnection);document.getElementById("clearDeviceState")?.addEventListener("click",()=>{if(!confirm("Clear SnackOS state saved only on this device?"))return;["cdawgProductionBatchState","cdawgKitchenBatchState","cdawgDualPriceState","cdawgPricingModeState",ACTIVITY_KEY,V300_PREFS_KEY].forEach(k=>localStorage.removeItem(k));location.reload()});applyV300Prefs()}
+
+// SnackOS V400 — Auto Operations
+const V400_PREFS_KEY="cdawgSnackOSV400Prefs";
+function v400Prefs(){try{return {...{autoPlan:false,lastDemandSignature:""},...JSON.parse(localStorage.getItem(V400_PREFS_KEY)||"{}")}}catch{return {autoPlan:false,lastDemandSignature:""}}}
+function saveV400Prefs(next){saveState(V400_PREFS_KEY,next);renderAutoOperations();}
+function ingredientMasterRecord(name){const target=matchingKeys(name);return (dashboardData.ingredients||[]).find(x=>{const keys=matchingKeys(x.name||x.ingredient||x.Ingredient||"");return target.some(k=>keys.includes(k));})||null;}
+function ingredientInventoryForecast(){return buildDemandIngredientTotals().map(req=>{const master=ingredientMasterRecord(req.name)||{};const stock=number(master.stock??master.Stock??master.onHand??master.quantityOnHand);const reorder=number(master.reorderAt??master.ReorderAt??master.reorderPoint);const shortage=Math.max(0,req.amount-stock);const remaining=stock-req.amount;return {...req,stock,reorder,shortage,remaining,shoppingUnit:master.shoppingUnit||master.ShoppingUnit||req.unit};}).sort((a,b)=>b.shortage-a.shortage||a.remaining-b.remaining);}
+function shoppingShortages(){return ingredientInventoryForecast().filter(x=>x.shortage>0||x.remaining<=x.reorder).map(x=>({...x,buy:Math.max(x.shortage, x.reorder>0?x.reorder-x.remaining:0)}));}
+function demandSignature(){return productionDemandBatches().map(x=>`${x.key}:${x.quantity}:${x.batches}`).sort().join("|");}
+function maybeRunAutoOperations(){const p=v400Prefs();if(!p.autoPlan||!hasBackendData)return;const signature=demandSignature();if(!signature||signature===p.lastDemandSignature)return;applyDemandToProductionPlanner();localStorage.setItem(V400_PREFS_KEY,JSON.stringify({...p,lastDemandSignature:signature}));logActivity("⚙️","Auto Operations updated production","Fresh Square demand was converted into shared production batches");showToast("Auto Operations updated today’s production plan");}
+function salesForecast30(){const docs=[...allSquareOrders().map(o=>({...o,_date:orderDate(o),_total:orderTotal(o)})),...allSquareInvoices().map(i=>({...i,_date:invoiceDate(i),_total:invoiceTotal(i)}))];const cutoff=Date.now()-30*86400000;const recent=docs.filter(x=>{const t=new Date(x._date||0).getTime();return t>=cutoff&&Number.isFinite(t)});const revenue=recent.reduce((n,x)=>n+number(x._total),0);const days=Math.max(1,Math.min(30,(Date.now()-Math.min(...recent.map(x=>new Date(x._date).getTime()),Date.now()))/86400000));return {orders:recent.length,revenue,monthlyPace:revenue/days*30,avg:recent.length?revenue/recent.length:0};}
+function renderAutoOperations(){const el=document.getElementById("autoOperationsGrid");if(!el)return;const p=v400Prefs(),s=businessSnapshot(),inv=ingredientInventoryForecast(),short=shoppingShortages(),forecast=salesForecast30();const topShort=short.slice(0,4);el.innerHTML=`
+ <article class="auto-op-card primary"><span>Automatic Production</span><strong>${p.autoPlan?"ON":"Ready"}</strong><small>${p.autoPlan?"Fresh Square demand updates the shared planner automatically":"Turn on only when Caleb wants Square to control the planner"}</small><button type="button" id="toggleAutoPlan" class="${p.autoPlan?"danger-lite":"print-btn"}">${p.autoPlan?"Turn off":"Turn on Auto Plan"}</button></article>
+ <article class="auto-op-card"><span>Inventory Coverage</span><strong>${inv.filter(x=>x.shortage<=0).length}/${inv.length||0}</strong><small>${short.length?`${short.length} ingredient${short.length===1?"":"s"} need attention`:`Current demand is covered by recorded stock`}</small><button type="button" data-v400-go="ingredients" class="ghost-btn">Review inventory</button></article>
+ <article class="auto-op-card"><span>Smart Shopping</span><strong>${short.length}</strong><small>${topShort.length?topShort.map(x=>`${x.name} +${x.buy.toFixed(1).replace(/\\.0$/,"")} ${x.unit}`).join(" · "):"Nothing to buy from current demand"}</small><button type="button" id="printShoppingV400" class="ghost-btn">Print shopping list</button></article>
+ <article class="auto-op-card"><span>30-Day Sales Pace</span><strong>${money(forecast.monthlyPace)}</strong><small>${forecast.orders} recent documents · ${money(forecast.avg)} average</small><button type="button" data-v400-go="orders" class="ghost-btn">Open Order Hub</button></article>`;
+ document.getElementById("toggleAutoPlan")?.addEventListener("click",()=>{const next=!p.autoPlan;saveV400Prefs({...p,autoPlan:next,lastDemandSignature:next?"":p.lastDemandSignature});if(next)maybeRunAutoOperations();showToast(next?"Automatic production planning is on":"Automatic production planning is off")});
+ document.getElementById("printShoppingV400")?.addEventListener("click",()=>{document.body.classList.add("print-smart-shopping");window.print();setTimeout(()=>document.body.classList.remove("print-smart-shopping"),300)});
+ document.querySelectorAll("[data-v400-go]").forEach(b=>b.onclick=()=>document.getElementById(b.dataset.v400Go)?.scrollIntoView({behavior:"smooth"}));
+ const list=document.getElementById("smartShoppingV400");if(list)list.innerHTML=short.length?short.map(x=>`<div class="shopping-intel-row"><b>${x.name}</b><span>Need ${x.amount.toFixed(2).replace(/\\.?0+$/,"")} ${x.unit}</span><span>On hand ${x.stock.toFixed(2).replace(/\\.?0+$/,"")} ${x.unit}</span><strong>Buy ${x.buy.toFixed(2).replace(/\\.?0+$/,"")} ${x.shoppingUnit||x.unit}</strong></div>`).join(""):`<div class="empty-state">No ingredient shortages detected from current Square demand and recorded stock.</div>`;
+}
+function initBusinessBrain(){document.getElementById("refreshBusinessBrain")?.addEventListener("click",()=>{renderBusinessBrain();renderAutoOperations();showToast("Business advice refreshed")})}
+
+function initAdmin(){document.getElementById("workspaceToggles")?.addEventListener("change",e=>{if(!e.target.dataset.workspace)return;const p=v300Prefs(),set=new Set(p.hidden||[]);e.target.checked?set.delete(e.target.dataset.workspace):set.add(e.target.dataset.workspace);saveV300Prefs({...p,hidden:[...set]});showToast("Workspace layout updated")});document.getElementById("densitySetting")?.addEventListener("change",e=>saveV300Prefs({...v300Prefs(),density:e.target.value}));document.getElementById("focusModeSetting")?.addEventListener("change",e=>saveV300Prefs({...v300Prefs(),focus:e.target.checked}));document.getElementById("resetLayoutButton")?.addEventListener("click",()=>{saveV300Prefs({density:"comfortable",focus:false,hidden:[]});renderAdmin();showToast("Default layout restored")});document.getElementById("exportSnackOS")?.addEventListener("click",exportSnackOS);document.getElementById("importSnackOS")?.addEventListener("change",async e=>{try{if(e.target.files[0])await importSnackOSFile(e.target.files[0])}catch(err){showToast(err.message)}});document.getElementById("runDiagnostics")?.addEventListener("click",()=>{renderDiagnostics();showToast("Diagnostics complete")});document.getElementById("saveSyncConnection")?.addEventListener("click",saveSyncConnection);document.getElementById("testSyncConnection")?.addEventListener("click",testSyncConnection);document.getElementById("clearDeviceState")?.addEventListener("click",()=>{if(!confirm("Clear SnackOS state saved only on this device?"))return;["cdawgProductionBatchState","cdawgKitchenBatchState","cdawgDualPriceState","cdawgPricingModeState",ACTIVITY_KEY,V300_PREFS_KEY,V400_PREFS_KEY].forEach(k=>localStorage.removeItem(k));location.reload()});applyV300Prefs()}

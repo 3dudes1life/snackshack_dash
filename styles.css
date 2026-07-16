@@ -2001,3 +2001,17 @@ body::after {
 .cloud-admin-card .admin-field input{width:100%;box-sizing:border-box;border:1px solid rgba(10,91,105,.2);border-radius:12px;padding:12px 14px;font:inherit;background:#fff;color:#123}
 .cloud-admin-card .admin-button-stack{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
 .cloud-admin-card .security-note{display:block;margin-top:10px;color:#667;line-height:1.45}
+
+
+/* SnackOS V400 — Auto Operations */
+.auto-operations-suite{margin:18px 0;padding:18px;border:1px solid rgba(14,104,91,.18);border-radius:22px;background:linear-gradient(135deg,#f7fffc,#fff8e9);box-shadow:0 14px 30px rgba(31,83,70,.08)}
+.auto-operations-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:12px}
+.auto-op-card{display:flex;flex-direction:column;gap:7px;min-height:185px;padding:16px;border-radius:18px;background:#fff;border:1px solid rgba(28,91,77,.14);box-shadow:0 8px 20px rgba(37,76,65,.06)}
+.auto-op-card.primary{background:linear-gradient(145deg,#123f38,#176052);color:#fff}.auto-op-card.primary small,.auto-op-card.primary span{color:#dff7ef}
+.auto-op-card span{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;font-weight:900;color:#59736c}.auto-op-card strong{font-size:1.65rem;line-height:1;color:inherit}.auto-op-card small{color:#63756f;line-height:1.45;flex:1}.auto-op-card button{width:100%}
+.smart-shopping-box{margin-top:14px;padding:14px;border-radius:17px;background:rgba(255,255,255,.75);border:1px solid rgba(28,91,77,.12)}
+.shopping-intel-row{display:grid;grid-template-columns:1.4fr repeat(3,minmax(100px,1fr));gap:10px;align-items:center;padding:11px 4px;border-bottom:1px dashed rgba(25,83,70,.16)}.shopping-intel-row:last-child{border-bottom:0}.shopping-intel-row span{font-size:.84rem;color:#65756f}.shopping-intel-row strong{color:#bd542b}
+.danger-lite{border:1px solid rgba(176,63,48,.25);background:#fff0ed;color:#a63d2e;border-radius:12px;padding:10px 12px;font-weight:900}
+@media(max-width:1050px){.auto-operations-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:650px){.auto-operations-grid{grid-template-columns:1fr}.shopping-intel-row{grid-template-columns:1fr 1fr}.shopping-intel-row strong{grid-column:1/-1}.auto-op-card{min-height:0}}
+@media print{body.print-smart-shopping .content>section:not(#businessBrain),body.print-smart-shopping .sidebar,body.print-smart-shopping #ownerBrief,body.print-smart-shopping .business-brain-grid,body.print-smart-shopping .auto-operations-grid{display:none!important}body.print-smart-shopping #businessBrain{display:block!important;box-shadow:none!important;border:0!important}.smart-shopping-box{display:block!important}}

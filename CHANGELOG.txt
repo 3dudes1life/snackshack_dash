@@ -21,3 +21,12 @@ V300 — BUSINESS BRAIN
 - Preserved V200 Cloudflare Worker/D1 sync package and all existing Square/Google connections.
 
 V300.1 UI: Unified Daily Command + Cloud Sync inside Bakery Manager Brain 9.0.
+
+
+V400 Auto Operations
+- Restored independent Square + Google Sheets live refresh every 30 seconds, on focus, visibility, reconnect, page restore, and manual Refresh.
+- Added optional automatic Square-demand production planning.
+- Added ingredient inventory coverage and shortage forecasting from Google Sheets Stock/ReorderAt fields.
+- Added demand-driven printable smart shopping list.
+- Added 30-day sales pace and expanded Profit Guardian/Owner Brief integration.
+- Preserved Cloudflare/D1 shared state sync and saved device password.
