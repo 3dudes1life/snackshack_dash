@@ -1,0 +1,12 @@
+SNACKOS V300 — FINAL CLOUD SYNC STEP
+
+1. Upload this ZIP contents to the GitHub repository used by the SnackOS dashboard.
+2. In Cloudflare D1 > snackshack-sync > Console, run cloudflare-worker/schema.sql once.
+3. The dashboard already points to:
+   https://snackshack-sync-api.round-disk-6577.workers.dev
+4. If you configured SYNC_API_KEY on the Worker, open SnackOS > Admin > Cloud Sync on each device, enter the same password once, leave “Remember on this device” checked, and click Save & connect.
+5. If the Worker has no SYNC_API_KEY, simply click Test connection.
+6. Change a production batch on Device A. Open Device B and click Sync now (or wait up to 15 seconds). The same state should appear.
+
+SECURITY
+The sync password is intentionally NOT hard-coded into this ZIP or GitHub. Hard-coding it would expose it to anyone who can view the website source. It is saved in localStorage on each approved browser and remains there until browser website data is cleared.

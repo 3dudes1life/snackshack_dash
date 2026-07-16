@@ -2028,3 +2028,8 @@ body::after {
 body.snackos-compact .panel{padding:13px}body.snackos-compact .content{gap:12px}body.snackos-compact .cost-card-grid,body.snackos-compact .business-brain-grid{gap:8px}body.owner-focus #activityPanel,body.owner-focus #overview,body.owner-focus #cleanup{display:none!important}.workspace-hidden{display:none!important}
 @media(max-width:900px){.owner-brief{grid-template-columns:repeat(3,minmax(0,1fr))}.owner-greeting{grid-column:1/-1}.business-brain-grid,.admin-grid{grid-template-columns:1fr}}
 @media(max-width:560px){.owner-brief{grid-template-columns:1fr}.owner-greeting{grid-column:auto}.workspace-toggles{grid-template-columns:1fr}.brain-row{grid-template-columns:auto minmax(0,1fr)}.brain-row button{grid-column:2;justify-self:start}}
+
+/* SnackOS V300 Cloud connection */
+.cloud-admin-card .admin-field input{width:100%;box-sizing:border-box;border:1px solid rgba(10,91,105,.2);border-radius:12px;padding:12px 14px;font:inherit;background:#fff;color:#123}
+.cloud-admin-card .admin-button-stack{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+.cloud-admin-card .security-note{display:block;margin-top:10px;color:#667;line-height:1.45}

@@ -8,8 +8,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="./src/styles.css?v=300-business-brain">
-<link rel="stylesheet" href="./src/mobile.css?v=300-business-brain">
+<link rel="stylesheet" href="./src/styles.css?v=300-cloud-connected">
+<link rel="stylesheet" href="./src/mobile.css?v=300-cloud-connected">
 
 <style id="emergency-dashboard-css">
 :root{
@@ -2178,16 +2178,16 @@ body::after { content: "v93 invoice fix" !important; }
         <article class="admin-card"><h3>Workspace visibility</h3><p>Hide tools Caleb does not need every day. Nothing is deleted.</p><div id="workspaceToggles" class="workspace-toggles"></div></article>
         <article class="admin-card"><h3>Interface</h3><label class="admin-field"><span>Dashboard density</span><select id="densitySetting"><option value="comfortable">Comfortable</option><option value="compact">Compact</option></select></label><label class="switch-row"><input id="focusModeSetting" type="checkbox"><span><b>Owner Focus Mode</b><small>Show Business Brain first and reduce operational clutter.</small></span></label><button id="resetLayoutButton" class="ghost-btn" type="button">Restore default layout</button></article>
         <article class="admin-card"><h3>Data portability</h3><p>Export device settings and operating state before major changes.</p><div class="admin-button-stack"><button id="exportSnackOS" class="ghost-btn" type="button">Export SnackOS backup</button><label class="ghost-btn file-button">Import backup<input id="importSnackOS" type="file" accept="application/json" hidden></label></div></article>
-        <article class="admin-card"><h3>System diagnostics</h3><div id="systemDiagnostics" class="diagnostic-list"></div><button id="runDiagnostics" class="ghost-btn" type="button">Run diagnostics</button></article>
+        <article class="admin-card cloud-admin-card"><h3>Cloud Sync</h3><p>This dashboard is connected to the shared SnackOS Worker. The password can stay remembered in this browser, so you enter it only once per device.</p><label class="admin-field"><span>Device sync password</span><input id="syncPasswordSetting" type="password" autocomplete="current-password" placeholder="Only needed if SYNC_API_KEY is enabled"></label><label class="switch-row"><input id="rememberSyncPassword" type="checkbox"><span><b>Remember on this device</b><small>Saved in this browser until you clear its website data.</small></span></label><div class="admin-button-stack"><button id="saveSyncConnection" class="primary-btn" type="button">Save & connect</button><button id="testSyncConnection" class="ghost-btn" type="button">Test connection</button></div><small class="security-note">The password is not included in GitHub or the ZIP. Each approved device stores its own copy locally.</small></article><article class="admin-card"><h3>System diagnostics</h3><div id="systemDiagnostics" class="diagnostic-list"></div><button id="runDiagnostics" class="ghost-btn" type="button">Run diagnostics</button></article>
       </div>
       <details class="danger-zone"><summary>Advanced device cleanup</summary><div><p>Clears only this browser's SnackOS state. Cloud and Square source data are not deleted.</p><button id="clearDeviceState" class="danger-btn" type="button">Clear this device's saved state</button></div></details>
     </section>
   </main>
 </div>
 
-<script src="data/recipe-library.js?v=300-business-brain"></script>
-<script src="data/config.js?v=300-business-brain"></script>
-<script src="src/app.js?v=300-business-brain"></script>
+<script src="data/recipe-library.js?v=300-cloud-connected"></script>
+<script src="data/config.js?v=300-cloud-connected"></script>
+<script src="src/app.js?v=300-cloud-connected"></script>
 <div id="toast" class="software-toast" role="status" aria-live="polite"></div>
 <div id="commandPalette" class="command-overlay" hidden>
   <div class="command-dialog" role="dialog" aria-modal="true" aria-labelledby="commandTitle">
