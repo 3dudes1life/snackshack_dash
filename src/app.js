@@ -301,7 +301,7 @@ function mergedRecipes() {
 function getProductionBatch(key, fallback = 0) {
   return hasOwn(productionBatchState, key) ? Math.max(0, number(productionBatchState[key])) : Math.max(0, number(fallback) || 0);
 }
-function setProductionBatch(key, value) { productionBatchState[key] = Math.max(0, number(value)); saveState("cdawgProductionBatchState", productionBatchState); }
+function setProductionBatch(key, value) { const next=Math.max(0, number(value)); productionBatchState[key] = next; saveState("cdawgProductionBatchState", productionBatchState); logActivity("🧮","Planner batch changed",`${key}: ${next} batch${next===1?"":"es"}`); }
 function getKitchenBatch(key, fallback = 1) {
   return hasOwn(kitchenBatchState, key) ? Math.max(1, number(kitchenBatchState[key])) : Math.max(1, number(fallback) || 1);
 }
@@ -318,7 +318,7 @@ function savePriceState() { saveState("cdawgDualPriceState", priceState); }
 function savePricingModeState() { saveState("cdawgPricingModeState", pricingModeState); }
 function pricingMode(r) { return pricingModeState[r.key] || "corporate"; }
 function setPricingMode(key, mode) { pricingModeState[key] = mode; savePricingModeState(); }
-function setPriceField(key, field, value) { if (!priceState[key]) priceState[key] = {}; priceState[key][field] = Math.max(0, number(value)); savePriceState(); }
+function setPriceField(key, field, value) { if (!priceState[key]) priceState[key] = {}; const next=Math.max(0, number(value)); priceState[key][field] = next; savePriceState(); logActivity("💵","Price updated",`${key} · ${field}: ${money(next)}`); }
 function getCorporateDzPrice(r) { return number(priceRecord(r).corporateDz) || 0; }
 function getSquareDzPrice(r) { return number(priceRecord(r).squareDz) || 0; }
 function getSquareEachPrice(r) { return number(priceRecord(r).squareEach) || 0; }
@@ -1078,6 +1078,81 @@ function bindControls() {
     control.querySelector("select")?.addEventListener("change", e => { setPricingMode(key, e.target.value); renderAll(); });
   });
 }
+
+
+// v100 SnackOS software intelligence layer
+const ACTIVITY_KEY = "cdawgSnackOSActivity";
+function getActivity(){ try{return JSON.parse(localStorage.getItem(ACTIVITY_KEY)||"[]")}catch{return []} }
+function logActivity(icon,title,detail){
+  const rows=getActivity(); rows.unshift({icon,title,detail,time:new Date().toISOString()});
+  localStorage.setItem(ACTIVITY_KEY,JSON.stringify(rows.slice(0,30))); renderActivity();
+}
+function showToast(message){ const el=document.getElementById("toast"); if(!el)return; el.textContent=message; el.classList.add("show"); clearTimeout(showToast.t); showToast.t=setTimeout(()=>el.classList.remove("show"),2400); }
+function operationalHealth(){
+  const recipes=mergedRecipes(), unmatched=recipes.filter(r=>!r.costProduct).length;
+  const open=squareOrderSummary().combinedOpen.length, demands=productionDemandBatches();
+  const unmatchedDemand=demands.filter(r=>r.unmatched).length, planned=recipes.filter(r=>selectedBatches(r)>0).length;
+  let score=100; score-=Math.min(25,unmatched*4); score-=Math.min(25,unmatchedDemand*8);
+  if(open>0&&!planned)score-=18; if(!hasBackendData)score-=20;
+  return Math.max(0,Math.round(score));
+}
+function renderCockpit(){
+  const health=operationalHealth(), ring=document.getElementById("healthRing");
+  if(ring){ring.style.setProperty("--health",`${health}%`);ring.querySelector("strong").textContent=health;}
+  const smart=document.getElementById("smartActions");
+  if(smart) smart.innerHTML=[
+    ["⚡","Build today’s plan","Send live demand into Production Planner","apply-demand"],
+    ["🧁","Open Cook Mode","Jump straight to the kitchen workspace","cook"],
+    ["💵","Review pricing","Compare corporate and Square margins","pricing"],
+    ["🛒","Prep shopping list","See ingredients for selected batches","shoppingList"]
+  ].map(([i,t,d,a])=>`<button class="smart-action" data-smart="${a}"><b>${i} ${t}</b><span>${d}</span></button>`).join("");
+  smart?.querySelectorAll("[data-smart]").forEach(btn=>btn.addEventListener("click",()=>runSmartAction(btn.dataset.smart)));
+  const recipes=mergedRecipes(), planned=recipes.filter(r=>selectedBatches(r)>0), unmatched=recipes.filter(r=>!r.costProduct).length;
+  const open=squareOrderSummary().combinedOpen.length, demand=productionDemandBatches().filter(r=>!r.unmatched).reduce((s,r)=>s+r.batches,0);
+  const signals=document.getElementById("cockpitSignals");
+  if(signals) signals.innerHTML=`
+    <article class="signal-card ${open?'warn':'good'}"><span>Open work</span><strong>${open}</strong><small>orders + invoices</small></article>
+    <article class="signal-card ${demand?'warn':'good'}"><span>Demand batches</span><strong>${demand}</strong><small>from live orders</small></article>
+    <article class="signal-card ${planned.length?'good':'warn'}"><span>Planner recipes</span><strong>${planned.length}</strong><small>currently selected</small></article>
+    <article class="signal-card ${unmatched?'bad':'good'}"><span>Data cleanup</span><strong>${unmatched}</strong><small>recipe links needed</small></article>`;
+}
+function runSmartAction(action){
+  if(action==="apply-demand"){ applyDemandToProductionPlanner(); logActivity("⚡","Production plan updated","Live order demand sent to planner"); showToast("Production demand sent to planner"); return; }
+  const el=document.getElementById(action); el?.scrollIntoView({behavior:"smooth",block:"start"}); showToast("Opening workspace");
+}
+function renderActivity(){
+  const feed=document.getElementById("activityFeed"), rows=getActivity(); if(!feed)return;
+  feed.innerHTML=rows.length?rows.slice(0,8).map(r=>`<article class="activity-item"><div class="activity-icon">${r.icon}</div><div><b>${r.title}</b><span>${r.detail}</span></div><time>${new Date(r.time).toLocaleString([], {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}</time></article>`).join(""):`<div class="empty-state">Actions taken in SnackOS will appear here.</div>`;
+}
+function commandItems(){
+  const base=[
+    ["Dashboard","Top operational view","top"],["Order Hub","Square orders and production demand","orders"],["Cook Mode","Scaled kitchen recipes","cook"],["Production Planner","Batch, cost, and profit planning","costs"],["Dual Pricing","Corporate and Square pricing","pricing"],["Ingredients","Master ingredient costs","ingredients"],["Cleanup Queue","Missing links and data issues","cleanup"],["Snack IQ Brain","Recommendations and Smart Prep","report"]
+  ];
+  return base.concat(mergedRecipes().map(r=>[r.name,"Open recipe in Cook Mode",`recipe:${r.key}`]));
+}
+function renderCommands(filter=""){
+  const box=document.getElementById("commandResults"), q=filter.toLowerCase(); if(!box)return;
+  const rows=commandItems().filter(x=>`${x[0]} ${x[1]}`.toLowerCase().includes(q)).slice(0,24);
+  box.innerHTML=rows.map(([t,d,a])=>`<button class="command-result" data-command="${a}"><b>${t}</b><span>${d}</span></button>`).join("")||`<div class="empty-state">No matching action.</div>`;
+  box.querySelectorAll("[data-command]").forEach(btn=>btn.addEventListener("click",()=>executeCommand(btn.dataset.command)));
+}
+function executeCommand(action){
+  closeCommands();
+  if(action.startsWith("recipe:")){selectedRecipeKey=action.split(":")[1];renderRecipeList();renderRecipeDetail();document.getElementById("cook")?.scrollIntoView({behavior:"smooth"});showToast("Recipe opened");return;}
+  document.getElementById(action)?.scrollIntoView({behavior:"smooth",block:"start"});
+}
+function openCommands(){const o=document.getElementById("commandPalette");if(!o)return;o.hidden=false;renderCommands();setTimeout(()=>document.getElementById("commandSearch")?.focus(),20)}
+function closeCommands(){const o=document.getElementById("commandPalette");if(o)o.hidden=true}
+function initSnackOS(){
+  document.getElementById("commandButton")?.addEventListener("click",openCommands);
+  document.getElementById("closeCommand")?.addEventListener("click",closeCommands);
+  document.getElementById("commandPalette")?.addEventListener("click",e=>{if(e.target.id==="commandPalette")closeCommands()});
+  document.getElementById("commandSearch")?.addEventListener("input",e=>renderCommands(e.target.value));
+  document.getElementById("clearActivity")?.addEventListener("click",()=>{localStorage.removeItem(ACTIVITY_KEY);renderActivity();showToast("Activity cleared")});
+  document.addEventListener("keydown",e=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==="k"){e.preventDefault();openCommands()}if(e.key==="Escape")closeCommands()});
+  renderActivity(); renderCockpit();
+}
+
 function renderAll() {
   renderTodayFocus();
   renderOverview();
@@ -1089,6 +1164,8 @@ function renderAll() {
   renderCleanup();
   renderBrain();
   renderOrderHub();
+  renderCockpit();
+  renderActivity();
   bindControls();
   syncPanel(lastSyncAt ? "LIVE" : "Loading…", lastSyncAt ? "Fresh Square + Google Sheets data loaded" : "Pulling fresh bakery data");
 }
@@ -1103,6 +1180,8 @@ async function init() {
   document.getElementById("printTodayButton")?.addEventListener("click", () => window.print());
   document.getElementById("brainButton")?.addEventListener("click", () => { renderBrain(); renderOrderHub(); });
   startAutoRefresh();
+  initSnackOS();
+  if (!getActivity().length) logActivity("✨","SnackOS ready","Smart bakery command center initialized");
 }
 init();
 window.addEventListener("focus", liveRefresh);

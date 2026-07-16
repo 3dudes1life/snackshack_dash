@@ -2,3 +2,14 @@
 - Removed checkboxes from the scaled ingredient list.
 - Preserved the Today card and the existing batch scaling behavior.
 - Adjusted unit grammar so singular/plural forms read as 1 cup, 1/2 cup, 1 tbsp, 1 tsp, 2 cups, 2 tbsp, and 2 tsp.
+
+V100 — SnackOS Software Layer
+- Rebranded dashboard experience as C-Dawg's SnackOS without changing the existing bakery theme.
+- Added operational health score based on backend availability, unmatched recipes, live demand, and planner readiness.
+- Added Daily Command cockpit with open work, demand batches, selected planner recipes, and cleanup signals.
+- Added one-click smart actions for live demand planning, Cook Mode, pricing, and Smart Prep.
+- Added local activity/audit feed for planner and pricing changes.
+- Added software toast confirmations.
+- Added searchable command palette (Command/Ctrl + K) for navigation and instant recipe opening.
+- Upgraded Snack IQ presentation from Brain 8.0 to Brain 9.0.
+- Preserved existing Square, Google Sheets, Apps Script, and communication connections.

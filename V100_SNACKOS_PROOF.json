@@ -1,0 +1,17 @@
+{
+  "version": "100-snackos",
+  "status": "passed",
+  "preserved_connections": ["Square backend", "Google Sheets backend", "Apps Script JSONP", "existing config.js"],
+  "features": [
+    "Operational health score",
+    "Daily command cockpit",
+    "Smart actions",
+    "Live operational signals",
+    "Local activity audit trail",
+    "Toast notifications",
+    "Command palette with Command/Ctrl+K",
+    "Recipe quick open",
+    "Mobile responsive software UI"
+  ],
+  "syntax_check": "node --check src/app.js passed"
+}
