@@ -8,8 +8,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="./src/styles.css?v=100-snackos">
-<link rel="stylesheet" href="./src/mobile.css?v=100-snackos">
+<link rel="stylesheet" href="./src/styles.css?v=200-shared-brain">
+<link rel="stylesheet" href="./src/mobile.css?v=200-shared-brain">
 
 <style id="emergency-dashboard-css">
 :root{
@@ -1978,7 +1978,7 @@ body::after { content: "v93 invoice fix" !important; }
       <a href="#pricing">Dual Pricing</a>
       <a href="#ingredients">Ingredients</a>
       <a href="#cleanup">Cleanup</a>
-      <a href="#report">Brain 8.0</a>
+      <a href="#report">Brain 9.0</a>
     </nav>
     <button id="refreshButton" class="refresh-btn">Refresh</button>
   </aside>
@@ -2003,13 +2003,14 @@ body::after { content: "v93 invoice fix" !important; }
         </div>
         <div id="healthRing" class="health-ring" aria-label="Operational health score"><strong>—</strong><span>Health</span></div>
       </article>
+      <div class="cloud-sync-strip"><div><strong id="cloudSyncBadge" data-status="local">⚪ Local mode</strong><span id="cloudSyncDetail">Cloud connection not configured yet</span></div><button type="button" id="cloudSyncNow" class="ghost-btn">Sync now</button></div>
       <div id="smartActions" class="smart-actions"></div>
       <div id="cockpitSignals" class="cockpit-signals"></div>
     </section>
 
     <section id="activityPanel" class="panel activity-panel">
       <div class="panel-head slim">
-        <div><p class="eyebrow">System Activity</p><h2>Recent actions</h2><p class="muted">Local audit trail for planner and pricing changes on this device.</p></div>
+        <div><p class="eyebrow">System Activity</p><h2>Recent actions</h2><p class="muted">Shared audit trail when Cloud Sync is connected; safely cached on this device when offline.</p></div>
         <button id="clearActivity" class="ghost-btn" type="button">Clear</button>
       </div>
       <div id="activityFeed" class="activity-feed"></div>
@@ -2156,9 +2157,9 @@ body::after { content: "v93 invoice fix" !important; }
   </main>
 </div>
 
-<script src="data/recipe-library.js?v=100-snackos"></script>
-<script src="data/config.js?v=100-snackos"></script>
-<script src="src/app.js?v=100-snackos"></script>
+<script src="data/recipe-library.js?v=200-shared-brain"></script>
+<script src="data/config.js?v=200-shared-brain"></script>
+<script src="src/app.js?v=200-shared-brain"></script>
 <div id="toast" class="software-toast" role="status" aria-live="polite"></div>
 <div id="commandPalette" class="command-overlay" hidden>
   <div class="command-dialog" role="dialog" aria-modal="true" aria-labelledby="commandTitle">

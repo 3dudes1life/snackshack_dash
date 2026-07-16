@@ -135,7 +135,10 @@ function loadState(primary, fallback) {
     return {};
   }
 }
-function saveState(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
+function saveState(key, value) {
+  localStorage.setItem(key, JSON.stringify(value));
+  SnackCloud.queueStateSave(key, value);
+}
 function hasOwn(obj, key) { return Object.prototype.hasOwnProperty.call(obj, key); }
 
 function titleWords(value) {
@@ -1080,12 +1083,106 @@ function bindControls() {
 }
 
 
+
+// v200 SnackOS Shared Brain — Cloudflare Worker + D1 ready
+const SnackCloud = (() => {
+  const supportedKeys = new Set([
+    "cdawgProductionBatchState", "cdawgKitchenBatchState", "cdawgDualPriceState",
+    "cdawgPricingModeState", "cdawgSnackOSActivity"
+  ]);
+  let status = "local";
+  let lastCloudSync = null;
+  let timer = null;
+  let applyingRemote = false;
+  const pending = new Map();
+
+  const apiUrl = () => String(window.SNACKSHACK_SYNC_API_URL || "").replace(/\/$/, "");
+  const apiKey = () => String(window.SNACKSHACK_SYNC_API_KEY || "");
+  const configured = () => Boolean(apiUrl() && !apiUrl().includes("PASTE_"));
+
+  function headers(json=true){
+    const h = {};
+    if (json) h["Content-Type"] = "application/json";
+    if (apiKey()) h["X-SnackOS-Key"] = apiKey();
+    return h;
+  }
+  function setStatus(next, detail=""){
+    status=next;
+    const el=document.getElementById("cloudSyncBadge");
+    const detailEl=document.getElementById("cloudSyncDetail");
+    if(el){
+      el.dataset.status=next;
+      el.textContent = next === "synced" ? "🟢 Cloud synced" : next === "saving" ? "🟡 Saving…" : next === "offline" ? "🔴 Offline" : "⚪ Local mode";
+    }
+    if(detailEl) detailEl.textContent = detail || (lastCloudSync ? `Updated ${new Date(lastCloudSync).toLocaleTimeString([], {hour:"numeric",minute:"2-digit",second:"2-digit"})}` : "Cloud connection not configured yet");
+  }
+  function replaceObject(target, source){
+    Object.keys(target).forEach(k=>delete target[k]);
+    if(source && typeof source === "object") Object.assign(target, source);
+  }
+  function applyState(key, value){
+    applyingRemote=true;
+    try{
+      localStorage.setItem(key, JSON.stringify(value || (key===ACTIVITY_KEY?[]:{})));
+      if(key==="cdawgProductionBatchState") replaceObject(productionBatchState,value);
+      else if(key==="cdawgKitchenBatchState") replaceObject(kitchenBatchState,value);
+      else if(key==="cdawgDualPriceState") replaceObject(priceState,value);
+      else if(key==="cdawgPricingModeState") replaceObject(pricingModeState,value);
+    } finally { applyingRemote=false; }
+  }
+  async function request(path, options={}){
+    const res=await fetch(`${apiUrl()}${path}`, {...options, headers:{...headers(options.body!==undefined), ...(options.headers||{})}, cache:"no-store"});
+    if(!res.ok){ const text=await res.text(); throw new Error(text || `Cloud error ${res.status}`); }
+    return res.status===204 ? null : res.json();
+  }
+  async function hydrate(){
+    if(!configured()){ setStatus("local"); return false; }
+    setStatus("saving","Connecting to shared brain…");
+    try{
+      const payload=await request("/v1/state");
+      const states=payload?.states || {};
+      Object.entries(states).forEach(([key,row])=>{ if(supportedKeys.has(key)) applyState(key,row.value); });
+      lastCloudSync=payload?.serverTime || new Date().toISOString();
+      setStatus("synced");
+      return true;
+    }catch(err){ console.warn("SnackCloud hydrate failed",err); setStatus("offline","Using saved device data · cloud retry queued"); return false; }
+  }
+  function queueStateSave(key,value){
+    if(applyingRemote || !supportedKeys.has(key) || !configured()) return;
+    pending.set(key, structuredClone ? structuredClone(value) : JSON.parse(JSON.stringify(value)));
+    setStatus("saving","Saving shared changes…");
+    clearTimeout(queueStateSave.t);
+    queueStateSave.t=setTimeout(flush,350);
+  }
+  async function flush(){
+    if(!configured() || !pending.size) return;
+    const entries=[...pending.entries()]; pending.clear();
+    try{
+      await Promise.all(entries.map(([key,value])=>request(`/v1/state/${encodeURIComponent(key)}`,{method:"PUT",body:JSON.stringify({value,device:window.SNACKSHACK_DEVICE_NAME||"SnackOS browser"})})));
+      lastCloudSync=new Date().toISOString(); setStatus("synced");
+    }catch(err){ entries.forEach(([k,v])=>pending.set(k,v)); setStatus("offline",`${pending.size} change${pending.size===1?"":"s"} waiting to sync`); console.warn("SnackCloud save failed",err); }
+  }
+  async function refresh(){
+    if(!configured() || pending.size) return;
+    const ok=await hydrate();
+    if(ok && typeof renderAll === "function") renderAll();
+  }
+  function start(){
+    setStatus(configured()?"saving":"local");
+    clearInterval(timer); timer=setInterval(refresh,15000);
+    window.addEventListener("online",()=>{flush();refresh();});
+    window.addEventListener("offline",()=>setStatus("offline","No internet · changes stay safely on this device"));
+    document.addEventListener("visibilitychange",()=>{if(!document.hidden)refresh();});
+  }
+  return {configured,hydrate,start,refresh,flush,queueStateSave,setStatus};
+})();
+
 // v100 SnackOS software intelligence layer
 const ACTIVITY_KEY = "cdawgSnackOSActivity";
 function getActivity(){ try{return JSON.parse(localStorage.getItem(ACTIVITY_KEY)||"[]")}catch{return []} }
 function logActivity(icon,title,detail){
   const rows=getActivity(); rows.unshift({icon,title,detail,time:new Date().toISOString()});
-  localStorage.setItem(ACTIVITY_KEY,JSON.stringify(rows.slice(0,30))); renderActivity();
+  saveState(ACTIVITY_KEY,rows.slice(0,30)); renderActivity();
 }
 function showToast(message){ const el=document.getElementById("toast"); if(!el)return; el.textContent=message; el.classList.add("show"); clearTimeout(showToast.t); showToast.t=setTimeout(()=>el.classList.remove("show"),2400); }
 function operationalHealth(){
@@ -1148,7 +1245,8 @@ function initSnackOS(){
   document.getElementById("closeCommand")?.addEventListener("click",closeCommands);
   document.getElementById("commandPalette")?.addEventListener("click",e=>{if(e.target.id==="commandPalette")closeCommands()});
   document.getElementById("commandSearch")?.addEventListener("input",e=>renderCommands(e.target.value));
-  document.getElementById("clearActivity")?.addEventListener("click",()=>{localStorage.removeItem(ACTIVITY_KEY);renderActivity();showToast("Activity cleared")});
+  document.getElementById("clearActivity")?.addEventListener("click",()=>{saveState(ACTIVITY_KEY,[]);renderActivity();showToast("Activity cleared")});
+  document.getElementById("cloudSyncNow")?.addEventListener("click",async()=>{await SnackCloud.flush();await SnackCloud.refresh();showToast(SnackCloud.configured()?"Cloud sync checked":"Add Worker URL in data/config.js to connect")});
   document.addEventListener("keydown",e=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==="k"){e.preventDefault();openCommands()}if(e.key==="Escape")closeCommands()});
   renderActivity(); renderCockpit();
 }
@@ -1170,6 +1268,8 @@ function renderAll() {
   syncPanel(lastSyncAt ? "LIVE" : "Loading…", lastSyncAt ? "Fresh Square + Google Sheets data loaded" : "Pulling fresh bakery data");
 }
 async function init() {
+  SnackCloud.start();
+  await SnackCloud.hydrate();
   let live = false, msg = "";
   try { await loadBackendData(); live = true; lastSyncAt = new Date(); } catch (e) { hasBackendData = false; console.warn(e); msg = e.message; }
   renderStatus(live, msg);

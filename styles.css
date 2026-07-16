@@ -1989,3 +1989,10 @@ body::after {
     padding-top: calc(var(--mobile-header-height, 300px) + 12px) !important;
   }
 }
+
+
+/* v200 Shared Brain */
+.cloud-sync-strip{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border:1px solid var(--line);background:rgba(255,255,255,.75);border-radius:18px}
+.cloud-sync-strip>div{display:grid;gap:2px}.cloud-sync-strip strong{font-size:.88rem}.cloud-sync-strip span{font-size:.75rem;color:var(--muted)}
+#cloudSyncBadge[data-status="synced"]{color:#0e6f3b}#cloudSyncBadge[data-status="saving"]{color:#8a5306}#cloudSyncBadge[data-status="offline"]{color:#a12222}
+@media(max-width:520px){.cloud-sync-strip{align-items:stretch;flex-direction:column}.cloud-sync-strip .ghost-btn{width:100%}}

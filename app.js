@@ -135,7 +135,10 @@ function loadState(primary, fallback) {
     return {};
   }
 }
-function saveState(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
+function saveState(key, value) {
+  localStorage.setItem(key, JSON.stringify(value));
+  SnackCloud.queueStateSave(key, value);
+}
 function hasOwn(obj, key) { return Object.prototype.hasOwnProperty.call(obj, key); }
 
 function titleWords(value) {
@@ -1099,6 +1102,8 @@ function renderAll() {
   syncPanel(lastSyncAt ? "LIVE" : "Loading…", lastSyncAt ? "Fresh Square + Google Sheets data loaded" : "Pulling fresh bakery data");
 }
 async function init() {
+  SnackCloud.start();
+  await SnackCloud.hydrate();
   let live = false, msg = "";
   try { await loadBackendData(); live = true; lastSyncAt = new Date(); } catch (e) { hasBackendData = false; console.warn(e); msg = e.message; }
   renderStatus(live, msg);

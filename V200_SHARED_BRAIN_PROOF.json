@@ -1,0 +1,1 @@
+{"version":"200","name":"SnackOS Shared Brain","cloudflareReady":true,"d1Binding":"DB","features":["cross-device production state","cross-device kitchen state","cross-device pricing","shared activity","15-second refresh","offline local fallback","queued retries","sync status UI"],"existingSquareGoogleConnectionPreserved":true}
