@@ -1,0 +1,6 @@
+{
+  "version": "SnackOS V400.1",
+  "change": "Removed smartActions and cockpitSignals containers from the integrated Bakery Manager Brain command suite",
+  "preserved": ["Cloudflare D1 sync", "Square live sync", "Google Sheets live sync", "Auto Operations", "Quick Actions", "financial metric cards"],
+  "status": "verified"
+}

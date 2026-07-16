@@ -1,3 +1,8 @@
+SnackOS V400.1 — Clean Command UI
+- Removed the cramped smart-action and signal text strips between Cloud Sync and the polished financial metric cards.
+- Kept all actions available through Quick Actions, navigation, Bakery Manager Brain, and workspace buttons.
+- Preserved Cloudflare sync, Square + Google Sheets live refresh, Auto Operations, and all calculations.
+
 - Repaired the visible Cook Mode ingredient rows to show quantity, unit, and ingredient name.
 - Removed checkboxes from the scaled ingredient list.
 - Preserved the Today card and the existing batch scaling behavior.
